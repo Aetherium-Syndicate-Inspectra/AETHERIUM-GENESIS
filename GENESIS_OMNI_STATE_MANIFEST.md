@@ -1,47 +1,52 @@
 GENESIS::OMNI_STATE_MANIFEST
 
 [STRUCTURE]
-- Declared Modules      : OK
-  - Active: src/backend (Core), src/frontend (Frontend - replaces 'gunui')
-  - Config: src/backend/core/config.py (Clean Auth/API Settings)
-- Orphan Components     : NONE
-  - awaken.py (Root - Active Runner)
-- Redundant Concepts    : NONE
+- Declared Modules      : PARTIAL
+  - Active: src/backend (Core), src/frontend (Frontend)
+  - Config: src/backend/core/config.py
+  - Path Mismatch: Documentation refers to 'legacy/' but filesystem uses 'archive/'.
+- Orphan Components     : FOUND (2)
+  - gun_ui_integration/ (Redundant UI root)
+  - ai_utils_package/ (Standalone utility)
+- Redundant Concepts    : FOUND (list)
+  - src/backend/core (Minimal config) vs src/backend/genesis_core (Actual Logic)
 
 [CONCEPTUAL LAYER]
 - Core Philosophy       : COHERENT
-  - "Light as Protocol" strictly enforced.
-  - "No Avatars" adherence is high.
-- Naming Consistency    : STABLE
-  - Documentation aligned with src/backend and src/frontend.
+  - "Light as Protocol" enforced in `src/backend/genesis_core`.
+  - "No Avatars" adhered to.
+- Naming Consistency    : FRACTURED
+  - 'legacy' vs 'archive' mismatch.
+  - 'departments' metaphor (Javana) sits alongside 'genesis' metaphor.
 - Undefined Semantics   : NONE
 
 [CURRENT REALITY]
 - Active Capabilities   :
-  - Voice-to-Intent (WebSpeech -> src/frontend -> src/backend)
-  - Intent-to-Light (LogenesisEngine -> VisualParameters -> Canvas)
-  - State Persistence (Session-based)
+  - Logenesis Engine (Intent Processing)
+  - Javana Reflex Kernel (High-speed Audio Reflex)
+  - WebSpeech Frontend (Input)
 - Dormant Designs       :
-  - Blockchain Memory (legacy/akashic_nirodha)
-  - IIT (legacy/niyama)
-  - Awakening Rituals (legacy/inspira)
-  - Kivy Mobile App (legacy/kivy_specs)
+  - Akashic Nirodha (Blockchain) [archive/legacy_v1]
+  - Niyama (IIT) [archive/legacy_v1]
+  - Inspira (Rituals) [archive/legacy_v1]
 - Abandoned Threads     :
-  - gunui_react (legacy/gunui_react)
-  - Root PWA (legacy/pwa_v1)
+  - gunui_react [archive/legacy_v1]
+  - pwa_v1 [archive/legacy_v1]
 
 [RISKS]
-- Structural Risk       : LOW (Runtime is stable via awaken.py)
-- Semantic Drift Risk   : LOW (Documentation now reflects reality)
+- Structural Risk       : LOW
+- Semantic Drift Risk   : MEDIUM
+  - Drift between documentation (AGENTS_GUIDE) and folder structure (archive vs legacy).
 - Future Bug Vectors    :
-  - None identified in current active scope.
+  - google-generativeai dependency (Deprecated)
 
 [RECOMMENDATION]
 - Freeze Expansion      : YES
 - Refactor Priority     :
-  - Monitor for new drift.
+  - Rename 'archive/' to 'legacy/' to align with AGENTS_GUIDE.
+  - Remove 'gun_ui_integration/' orphan.
 - Safe Extension Zones  :
-  - src/backend/core/visual_schemas
+  - src/backend/genesis_core
 
 [GENESIS NOTE]
-“The system is alive, and it remembers who it is.”
+“The system is alive, but it must decide whether to grow or to remember who it is.”
