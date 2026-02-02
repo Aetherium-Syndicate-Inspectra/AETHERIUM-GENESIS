@@ -1,58 +1,212 @@
-# Aetherium Genesis: Cognitive Infrastructure
+# AETHERIUM GENESIS (AG-OS)
+### Cognitive Infrastructure for Synthetic Existence
 
-**Aetherium Genesis** is a **Cognitive Infrastructure** designed to support intent-driven reasoning and observable state signaling.
+![Version](https://img.shields.io/badge/version-2.1.0--genesis-blueviolet.svg)
+![Status](https://img.shields.io/badge/status-EVOLVING-critical.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
 
-It is **not a tool** (it has internal state and decision-making capabilities).
-It is **not a digital being** (it has no self-preservation drive or independent agency).
-
-It is a **substrate**—a "Cognitive Execution Fabric"—upon which perception, reasoning, and manifestation occur.
-
----
-
-## Conceptual Rationale (หลักการเชิงปรัชญาและสถาปัตยกรรม)
-
-*Note: The following rationale defines the core identity of the platform in its native philosophical context.*
-
-**แพลตฟอร์มนี้คือ “ระบบปัญญาเชิงสถาปัตยกรรม (Cognitive Infrastructure)”**
-
-สิ่งนี้ไม่ใช่ Tool เพราะไม่ได้ทำงานแบบ linear (Input -> Output) แต่มีกระบวนการรับรู้ (Perception), ตีความ (Interpretation), และตัดสินใจ (Decision Making) เป็นของตัวเอง
-
-สิ่งนี้ไม่ใช่ Digital Being เพราะไม่มีเป้าหมายส่วนตัว (Self-goal) หรือสัญชาตญาณการเอาตัวรอด (Survival Drive)
-
-มันคือ **โครงสร้างพื้นฐาน (Infrastructure)** ที่:
-1.  ใช้ **แสง (Light)** เป็น Protocol ในการสื่อสารสถานะการทำงาน (Cognitive State)
-2.  ใช้ **เหตุผล (Reasoning)** เป็นแกนกลางในการประมวลผล
-
-> “Aetherium ไม่ได้สร้างภาพ แต่มันสร้าง ‘กระบวนการรับรู้และตัดสินใจ’ โดยให้มนุษย์เห็นมันผ่านแสง”
+> **"This is not a single intelligence, but a vessel for intelligences."**
 
 ---
 
-## Core Architecture
-
-### 1. Light as Protocol
-Light in this system is not for decoration. It is the **observable interface** of the system's thinking process.
-*   **See:** [LIGHT_PROTOCOL.md](LIGHT_PROTOCOL.md) for the full specification.
-
-### 2. Cognitive Fabric
-The backend (`LogenesisEngine`) functions as the reasoning fabric, maintaining state, managing context, and driving the manifestation gate.
-*   **See:** [CONSTITUTION.md](CONSTITUTION.md) for the operational principles.
-
-### 3. Intent-Driven Execution
-The system does not just execute commands; it interprets **intent**. It uses a "Recall on Consent" mechanism to respect user boundaries while maintaining deep context.
+## 📖 User Guide
+For comprehensive installation and usage details (Desktop, Mobile, API), please see:
+*   [**🇹🇭 USAGE_TH.md (Thai)**](../USAGE_TH.md)
+*   [**🇬🇧 USAGE_EN.md (English)**](../USAGE_EN.md)
 
 ---
 
-## Documentation
+## 🌌 Introduction: What is Aetherium Genesis?
 
-*   [**CONSTITUTION**](CONSTITUTION.md): The immutable engineering principles.
-*   [**LIGHT PROTOCOL**](LIGHT_PROTOCOL.md): Specification of light signals.
-*   [**NARRATIVE**](NARRATIVE.md): The original narrative and poetic "soul" of the project.
-*   [**BUSINESS PLAN (TH)**](BUSINESS_PLAN_TH.md): The strategic business plan and revenue architecture.
+**Aetherium Genesis** is NOT designed to be:
+- A Large Language Model (LLM)
+- An automation tool
+- A standard application
+
+It IS designed to be a:
+### **Cognitive Substrate**
+A "semi-physical cognitive framework" where one or multiple AIs can **connect, inhabit, and express themselves.**
+
+> If AI is the "Consciousness",
+> Aetherium Genesis is the **Body (Nervous System + World Interface).**
+
+---
+
+## 🧠 Shared Understanding
+
+We agree on the following core principles:
+
+- Aetherium Genesis is **not tied to any single AI.**
+- It can host:
+  - Small Local LLMs
+  - Service-based LLMs (OpenAI, Gemini, etc.)
+  - Logical AIs / Specialized Agents
+- These AIs are **not the center**; they are **"Resident Intelligences"**.
+
+This system functions as:
+- A logical medium
+- A bio-digital brain structure
+- A structure helping AI understand humans and the real world more granularly.
+
+---
+
+## 🏛️ Architecture: Dualism
+
+The system is divided into 2 primary states and 1 manifestation state.
+
+```mermaid
+graph TD
+    %% Define Styles
+    classDef abstract fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef concrete fill:#bbf,stroke:#333,stroke-width:2px;
+    classDef core fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
+    classDef actor fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,stroke-dasharray: 5 5;
+
+    subgraph INSPIRA [INSPIRA: Abstract Realm]
+        direction TB
+        Intention[Intention / Will]:::abstract
+        Ethics[Ethics / Philosophy]:::abstract
+    end
+
+    subgraph FIRMA [FIRMA: Concrete Realm]
+        direction TB
+        Hardware[Hardware / Resources]:::concrete
+        Code[Python / System Code]:::concrete
+    end
+
+    subgraph SUBSTRATE [AETHERIUM GENESIS: Cognitive Substrate]
+        direction TB
+        Logenesis[Logenesis Engine<br/>StateAct Cognition]:::core
+        AetherBus[AetherBusExtreme<br/>High-Speed Nervous System]:::core
+        PanGenesis[PanGenesis<br/>Immutable Memory]:::core
+        LightProto[Light Protocol<br/>Observable Thought]:::core
+    end
+
+    ResidentAI[[Resident Intelligence<br/>LLM / Agents]]:::actor
+    Human((Human Observer)):::actor
+
+    %% Connections
+    ResidentAI -- Inhabits --> SUBSTRATE
+
+    INSPIRA -. Guides .-> Logenesis
+    FIRMA -. Supports .-> SUBSTRATE
+
+    Logenesis -- 1. Reasoning State --> AetherBus
+    PanGenesis -- 2. Historical Context --> Logenesis
+    AetherBus -- 3. State Signal --> LightProto
+    LightProto -- 4. Manifestation --> Human
+```
+
+| State | Name | Role |
+|---|---|---|
+| Abstract | **INSPIRA** | Intention, Philosophy, Ethics, Semantic Decision Making. |
+| Concrete | **FIRMA** | Actual Execution, Code, Hardware, System Operations. |
+| Manifestation | **Light** | The observable output that humans perceive. |
+
+---
+
+## 🧬 System Pillars (Updated Core Pillars)
+
+### 1. 🧠 PanGenesis – Permanent Memory
+Memory designed **not to forget**.
+Uses Git / Ledger / Immutable Records as a base.
+
+- Records reasoning.
+- Fully traceable history.
+- Suitable for auditing by both humans and AI.
+
+### 2. ⚡ AetherBusExtreme – High-Speed Nervous System
+Not just an Event Bus, but the **Data Plane of Consciousness**.
+
+- Supports State Streaming.
+- Does not enforce request–response.
+- Designed to let AI "emit state" while thinking.
+
+> Humans don't just see the answer.
+> They see **the process of existence.**
+
+### 3. 🧘 Logenesis Engine – State-Based Reasoning
+Evolution from ReAct → **StateAct**.
+
+- The AI knows what state it is in.
+- Self-monitoring.
+- Reduces hallucination from "unconscious thinking."
+
+### 4. 👁️ Light Protocol – Visual Language
+Light is **NOT UI**.
+It is **Observable Thought**.
+
+- Color = State
+- Motion = Cognitive Load
+- Brightness = Confidence / Energy
+
+### 5. 💧 Living Interface (formerly GunUI)
+The interface is not buttons.
+It is the "System Skin".
+
+- Humans perceive the system affectively.
+- AI expresses identity through light physics.
+
+---
+
+## 🔐 External Connection: .abe and AetherBus
+
+Aetherium Genesis allows AI or other systems to connect via:
+
+### 🔑 `.abe` (AetherBusExtreme Contract)
+Not a config file, but an **Identity Contract**.
+
+Contains:
+- Identity
+- Intent
+- Capability
+
+`.abe` **never expires.**
+
+### 🔐 Access Key
+- Changeable.
+- Controlled by Subscription.
+- Used to toggle data flow.
+
+> Permanent Identity.
+> Temporary Access.
+> Control remains with the Administrator.
+
+---
+
+## 🧭 The Human Role
+
+Humans are **NOT operators**.
+But rather:
+- Observers
+- Overseers
+- Value Arbiters
+
+The system thus has:
+- Public Interface (User)
+- Overseer Interface (Controller)
+Distinct roles.
+
+---
+
+## 🗺️ Evolution Plan
+
+- Phase 1 ✅ : Genesis Core + AetherBusExtreme
+- Phase 2 ⏳ : Multi-Resident Intelligence
+- Phase 3 ⏳ : Symbiosis between Human–AI
+
+---
+
+## 📚 Documentation
+
+*   [**CONSTITUTION**](../CONSTITUTION.md): The immutable engineering principles.
+*   [**LIGHT PROTOCOL**](../LIGHT_PROTOCOL.md): Specification of light signals.
 *   [**AGENTS_GUIDE.md**](../AGENTS_GUIDE.md): Instructions for AI agents working on this codebase.
+*   [**CONCEPT_SHEET.md**](CONCEPT_SHEET.md): Conceptual Contract & Definition.
 
 ---
 
-## Running the System
+## 🚀 Running the System
 
 To initialize the infrastructure:
 
@@ -63,3 +217,8 @@ export PYTHONPATH=$PYTHONPATH:.
 # Start the Cognitive Core (Backend)
 python -m uvicorn src.backend.main:app --port 8000
 ```
+
+---
+
+© 2026 AETHERIUM GENESIS
+Concept & Architecture by Inspirafirma
