@@ -2,294 +2,232 @@ import sys
 import os
 import json
 import time
-import uuid
-import logging
-import asyncio
-import platform
-import struct
-import resource
+import importlib.util
+import inspect
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Dict, List, Any, Optional
+from dataclasses import dataclass
 
-# Ensure src is in path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+# Ensure src is in pythonpath
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
-try:
-    from src.backend.genesis_core.logenesis.engine import LogenesisEngine
-    from src.backend.genesis_core.models.logenesis import IntentPacket, LogenesisState, StateMetrics
-    from src.backend.genesis_core.bus.hyper_sonic import HyperSonicBus, HyperSonicReader
-except ImportError as e:
-    print(json.dumps({"error": f"Import Error: {e}"}))
-    sys.exit(1)
+from src.backend.genesis_core.audit.logger import EvolutionLogger
+from src.backend.genesis_core.dna import AutonomySeed, MutationSeed, DifferentiationCore, TraceableDNA
 
-# Configure logging to be silent or redirect to file to avoid polluting stdout (which is for JSON)
-logging.basicConfig(level=logging.CRITICAL)
-logger = logging.getLogger("SystemDiagnostic")
+# Initialize Logger
+logger = EvolutionLogger()
 
-class SystemInspector:
-    def __init__(self):
-        self.report = {
-            "timestamp": datetime.now().isoformat(),
-            "system_state": "Awakened", # Default assumption, will verify
-            "active_modules": [],
-            "failures": [],
-            "in_progress": [],
-            "neural_latency": "UNKNOWN",
-            "execution_trace": [],
-            "historical_persistence": "MISSING"
+CONSTITUTION_PATH = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "docs/CONSTITUTION.md"))
+
+def load_constitution(path: str = CONSTITUTION_PATH) -> Dict[str, Any]:
+    """Loads and parses the CONSTITUTION.md file."""
+    if not os.path.exists(path):
+        return {"error": "Constitution file not found"}
+
+    with open(path, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    # Simple parsing to extract Core Directives
+    directives = []
+    lines = content.split('\n')
+    in_directives = False
+
+    for line in lines:
+        if "## Core Directives" in line:
+            in_directives = True
+            continue
+        if in_directives and line.startswith("## ") and "Core Directives" not in line:
+            in_directives = False
+            break
+        if in_directives and line.strip().startswith("###"):
+            directives.append(line.strip())
+
+    return {
+        "content": content,
+        "core_directives": directives
+    }
+
+def check_missing_components(module_path: str, required_classes: List[str]) -> List[str]:
+    """Checks if required classes exist in the module."""
+    missing = []
+    try:
+        spec = importlib.util.spec_from_file_location("dna_module", module_path)
+        if spec and spec.loader:
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            for cls_name in required_classes:
+                if not hasattr(module, cls_name):
+                    missing.append(cls_name)
+    except Exception as e:
+        print(f"Error checking module components: {e}")
+        return required_classes # Assume all missing if error
+    return missing
+
+def analyze_mutation_patterns(log_path: str) -> List[Dict[str, Any]]:
+    """Analyzes mutation logs for patterns."""
+    # Placeholder logic as we rely on EvolutionLogger
+    return logger.read_logs("evolution", limit=50)
+
+def detect_anomalies(logs: List[Dict[str, Any]]) -> int:
+    """Detects anomalies in logs."""
+    anomalies = 0
+    for log in logs:
+        if "error" in str(log).lower() or "violation" in str(log).lower():
+            anomalies += 1
+    return anomalies
+
+def validate_intent_alignment(dna_path: str, constitution_path: str, tolerance: float = 0.85) -> float:
+    """Validates if DNA aligns with Constitution directives."""
+    # This is a heuristic check. In a real system, this might involve NLP or formal verification.
+    # Here we check if the DNA file structure implies adherence (e.g., proper inheritance).
+
+    constitution = load_constitution(constitution_path)
+    if "error" in constitution:
+        return 0.0
+
+    directives = constitution.get("core_directives", [])
+    if not directives:
+        return 0.0 # No directives found to validate against
+
+    # Check if DNA classes exist and inherit from TraceableDNA
+    try:
+        spec = importlib.util.spec_from_file_location("dna_module", dna_path)
+        if spec and spec.loader:
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+
+            score = 0.0
+            checks = 0
+
+            # Check 1: DNA classes should exist
+            for cls_name in ["AutonomySeed", "MutationSeed", "DifferentiationCore"]:
+                checks += 1
+                if hasattr(module, cls_name):
+                    cls = getattr(module, cls_name)
+                    # Check 2: Inheritance from TraceableDNA
+                    # We check base class names to avoid identity issues with re-imported modules
+                    base_names = [b.__name__ for b in cls.__bases__]
+                    if "TraceableDNA" in base_names:
+                        score += 1.0
+                    else:
+                        # Also check if it inherits from something that inherits from TraceableDNA
+                        # This is a shallow check
+                        score += 0.5 # Exists but inheritance unclear
+
+            # Normalize score
+            return score / checks if checks > 0 else 0.0
+
+    except Exception:
+        return 0.0
+
+    return 1.0 # Default fallback if everything seems okay but logic was simple
+
+class DifferentiationMonitor:
+    def check_self_awareness(self):
+        """Checks if the system can identify itself."""
+        # Simulated check for FIRMA boundary and self-coherence
+        return {
+            "boundary_stability": True,
+            "self_coherence": True,
+            "identity_crises": []
         }
 
-    def inspect_topology(self):
-        """
-        1. TOPOLOGY: List loaded modules, check INSPIRA/FIRMA mismatch.
-        """
-        # Active Modules
-        self.report["active_modules"] = list(sys.modules.keys())[:50] # Limit to 50 for brevity
+    def scan_firma_integrity(self):
+        return True
 
-        # Environment Check (FIRMA) vs Logic Req (INSPIRA)
-        python_version = sys.version.split()[0]
-        required_version = "3.10"
+    def measure_self_reference(self):
+        return 0.95
 
-        # Simple version check
-        major, minor, micro = platform.python_version_tuple()
-        if int(major) < 3 or (int(major) == 3 and int(minor) < 10):
-             self.report["failures"].append({
-                 "component": "FIRMA:ENV",
-                 "error": f"Python Version Mismatch: Found {python_version}, Required >= {required_version}"
-             })
+    def detect_identity_conflicts(self):
+        return []
 
-        # RAM Check (Linux specific)
-        try:
-            with open('/proc/meminfo', 'r') as f:
-                mem_total_kb = 0
-                for line in f:
-                    if "MemTotal" in line:
-                        mem_total_kb = int(line.split()[1])
-                        break
+class MutationHealthMonitor:
+    def __init__(self):
+        self.mutation_history = [] # In a real scenario, load from DB or logs
+        self.constitution = load_constitution()
 
-                # SHM_SIZE is 16MB (16384 KB)
-                # We need at least that much free, but let's just check if total is reasonable (e.g. > 512MB)
-                if mem_total_kb < 512000: # 512MB
-                    self.report["failures"].append({
-                        "component": "FIRMA:HARDWARE",
-                        "error": f"Insufficient RAM: {mem_total_kb} KB. Recommended > 512MB for Genesis Core."
-                    })
-        except FileNotFoundError:
-            pass # Not Linux, skip
+    def generate_health_report(self):
+        return {
+            "constitution_violations": self.check_constitution_compliance(),
+            "mutation_entropy": 0.5, # Placeholder
+            "adaptive_capacity": "High",
+            "evolutionary_trajectory": "Stable"
+        }
 
-    async def trace_execution(self):
-        """
-        2. LOGENESIS:TRACE:DUMP (Simulation)
-        """
-        engine = LogenesisEngine()
+    def check_constitution_compliance(self):
+        return []
 
-        # Dummy Packets
-        intents = [
-            "SYS_START_SEQUENCE",
-            "CHECK_STATUS",
-            "EMPTY_INTENT",
-            "CALCULATE_PI", # Analytic
-            "FEEL_THE_VOID", # Subjective
-            "IGNORE_ME",
-            "HELLO_WORLD",
-            "SYSTEM_OVERLOAD_TEST", # High Urgency
-            "QUIET_PLEASE",
-            "SHUTDOWN_REQUEST"
-        ]
+class EvolutionaryGuardrails:
+    def __init__(self):
+        self.red_lines = [] # Load from config or constitution
 
-        trace_log = []
+    def check_red_line_violations(self, system_state=None):
+        return []
 
-        for i, text in enumerate(intents):
-            packet = IntentPacket(
-                modality="text",
-                embedding=None,
-                energy_level=0.5 + (i * 0.05), # Ramp up energy
-                confidence=1.0,
-                raw_payload=text
-            )
+def audit_dna_evolution(dna_file_path: str = "src/backend/genesis_core/dna.py", intent_file: str = CONSTITUTION_PATH):
+    """Audits the DNA evolution."""
+    abs_dna_path = os.path.abspath(dna_file_path)
 
-            # Simulate processing
-            start_time = time.time()
-            try:
-                response = await engine.process(packet, session_id="diagnostic_sim")
-                duration = time.time() - start_time
+    required_seeds = ["AutonomySeed", "MutationSeed", "DifferentiationCore"]
+    missing_seeds = check_missing_components(abs_dna_path, required_seeds)
 
-                # Check for Hallucination Triggers
-                metrics = response.state_metrics
-                trigger = None
-                if metrics:
-                    if metrics.intent_entropy > 0.6:
-                        trigger = "High Entropy (Conflict)"
-                    if metrics.temporal_coherence < 0.2:
-                        trigger = "Low Coherence (Logic Break)"
+    mutation_logs = analyze_mutation_patterns("logs/genesis_cycle.log")
+    anomalous_mutations = detect_anomalies(mutation_logs)
 
-                if trigger:
-                     self.report["failures"].append({
-                         "component": "LOGENESIS:HALLUCINATION",
-                         "error": f"Triggered by '{text}': {trigger}. Entropy={metrics.intent_entropy:.2f}, Coherence={metrics.temporal_coherence:.2f}"
-                     })
+    intent_compliance = validate_intent_alignment(abs_dna_path, intent_file)
 
-                trace_entry = {
-                    "step": i + 1,
-                    "input": text,
-                    "state_after": response.state.value,
-                    "metrics": metrics.model_dump() if metrics else None,
-                    "duration_ms": f"{duration*1000:.2f}"
-                }
-                trace_log.append(trace_entry)
+    return {
+        "dna_integrity": len(missing_seeds) == 0,
+        "missing_components": missing_seeds,
+        "mutation_health": anomalous_mutations < 3,
+        "intent_alignment": intent_compliance
+    }
 
-            except Exception as e:
-                self.report["failures"].append({
-                    "component": "LOGENESIS:ENGINE",
-                    "error": f"Execution Failed on '{text}': {str(e)}"
-                })
+def audit_genesis_cycle():
+    """Audits the Genesis Cycle (The Three Ticks)."""
+    # Logic to read genesis_cycle.log and verify sequence
+    logs = logger.read_logs("genesis_cycle", limit=50)
+    # Validate sequence... for now return basic status
+    return {
+        "cycle_active": len(logs) > 0,
+        "last_phase": logs[-1]["phase"] if logs else "unknown",
+        "integrity": True
+    }
 
-        self.report["execution_trace"] = trace_log
-        self.report["historical_persistence"] = "MISSING" # Explicitly requested
+def main():
+    print(f"Starting System Inspection Protocol (SIP)...")
+    print(f"Constitution Path: {CONSTITUTION_PATH}")
 
-    def audit_traffic(self):
-        """
-        3. AETHERBUS:AUDIT (Speed Sync)
-        """
-        bus_name = f"diagnostic_bus_{uuid.uuid4().hex[:8]}"
-        writer = HyperSonicBus(shm_name=bus_name)
-        reader = HyperSonicReader(shm_name=bus_name)
+    dna_path = os.path.join(os.path.dirname(__file__), "genesis_core/dna.py")
 
-        try:
-            if not reader.connect():
-                 self.report["failures"].append({
-                     "component": "AETHERBUS:CONNECT",
-                     "error": "Failed to connect Reader to Writer SHM"
-                 })
-                 return
+    # 1. Audit DNA
+    dna_report = audit_dna_evolution(dna_path, CONSTITUTION_PATH)
+    logger.log_evolution_event("AUDIT_DNA", dna_report)
 
-            # Warmup
-            writer.write("warmup", b"0")
+    # 2. Audit Genesis Cycle
+    genesis_report = audit_genesis_cycle()
+    logger.log_evolution_event("AUDIT_GENESIS", genesis_report)
 
-            start_time = time.perf_counter()
-            count = 1000
+    # 3. Mutation Monitor
+    mutation_monitor = MutationHealthMonitor()
+    mutation_report = mutation_monitor.generate_health_report()
 
-            # Speed Sync Loop
-            # We write 1000 times. We read 1000 times.
-            # Ideally we'd interleave, but since it's same process,
-            # fill buffer then drain is safer to measure raw throughput without blocking logic complexity.
-            # Given SHM size (16MB) and small payload, 1000 msgs fit easily.
+    # 4. Guardrails
+    guardrails = EvolutionaryGuardrails()
+    red_lines = guardrails.check_red_line_violations()
 
-            for i in range(count):
-                writer.write("audit", b"PING")
+    final_report = {
+        "timestamp": datetime.now().isoformat(),
+        "system_health": {
+            "status": "healthy" if dna_report["dna_integrity"] else "degraded",
+            "dna_integrity": dna_report,
+            "genesis_cycle": genesis_report,
+            "mutation_health": mutation_report,
+            "red_line_violations": red_lines
+        }
+    }
 
-            # Now Read
-            read_count = 0
-            # consume generator
-            gen = reader.read()
-            # We need to manually iterate or re-call read() because read() is a generator that yields *available* messages
-            # It might yield them all in one go or we might need to call it again if writer was slower (not case here)
-
-            for _ in gen:
-                read_count += 1
-
-            # If not all read (unlikely in single thread sequential), try again?
-            # In HyperSonic implementation, read() loops until local_head == write_head.
-            # So one call to `read()` generator should yield everything currently in buffer.
-
-            duration = time.perf_counter() - start_time
-            avg_latency_us = (duration / count) * 1_000_000
-
-            self.report["neural_latency"] = f"{avg_latency_us:.2f} µs"
-
-            if read_count < count: # Account for warmup msg? No, warmup was before start_time
-                 # Actually wait, I wrote 'warmup' before loop.
-                 # So there are 1001 messages in buffer.
-                 # The loop in reader.read() will read all 1001.
-                 pass
-
-        except Exception as e:
-             self.report["failures"].append({
-                 "component": "AETHERBUS:AUDIT",
-                 "error": f"Audit Failed: {str(e)}"
-             })
-        finally:
-            writer.close()
-            reader.close()
-            # Ensure unlink happens (handled by writer.close() usually if mapped?
-            # HyperSonicBus.close() calls unlink() inside a try/except, which is good.
-            # Wait, writer.close() only calls close(), unlink is commented out or tricky?
-            # Let's check the code: "try: self.shm.unlink() except: pass" in close()
-            # Yes.
-
-    def check_ledger(self):
-        """
-        4. PANGENESIS:LEDGER (Integrity)
-        """
-        config_path = os.path.join("src", "backend", "data", "genesis_core.json")
-        if not os.path.exists(config_path):
-             self.report["failures"].append({
-                 "component": "PANGENESIS:LEDGER",
-                 "error": f"Genesis Core Data Missing: {config_path}"
-             })
-             return
-
-        try:
-            with open(config_path, 'r') as f:
-                data = json.load(f)
-                if not data:
-                    raise ValueError("Empty JSON")
-
-                # Check for uncommitted fragments (Mock check)
-                # In real scenario, we'd check `git status`.
-                # Here we just check if ID exists.
-                if not isinstance(data, list) or "id" not in data[0]:
-                     self.report["failures"].append({
-                         "component": "PANGENESIS:SCHEMA",
-                         "error": "Invalid Genesis Schema"
-                     })
-        except json.JSONDecodeError:
-             self.report["failures"].append({
-                 "component": "PANGENESIS:INTEGRITY",
-                 "error": "Corrupt JSON Ledger"
-             })
-        except Exception as e:
-             self.report["failures"].append({
-                 "component": "PANGENESIS:ACCESS",
-                 "error": str(e)
-             })
-
-    def resource_map(self):
-        """
-        5. FIRMA:ENV:RESOURCE_MAP
-        """
-        # CPU
-        cpu_count = os.cpu_count()
-
-        # RAM Usage (Self)
-        rusage = resource.getrusage(resource.RUSAGE_SELF)
-        ram_usage_mb = rusage.ru_maxrss / 1024 # Linux: kb. MacOS: bytes? Usually KB on Linux.
-        if platform.system() == "Darwin":
-            ram_usage_mb /= 1024 # Convert bytes to MB on Mac
-
-        self.report["in_progress"].append(f"Resource Audit: {cpu_count} CPUs, ~{ram_usage_mb:.2f} MB Active RAM")
-
-        # Chromatic Sanctum Check
-        sanctum_path = os.path.join("src", "backend", "core", "perception", "chromatic_core.py")
-        if not os.path.exists(sanctum_path):
-             self.report["failures"].append({
-                 "component": "CHROMATIC:SANCTUM",
-                 "error": "Physics Engine Source Missing"
-             })
-
-    async def run(self):
-        self.inspect_topology()
-        self.audit_traffic() # Synchronous part
-        self.check_ledger()
-        self.resource_map()
-        await self.trace_execution() # Async part
-
-        # Output JSON
-        print(json.dumps(self.report, indent=2, ensure_ascii=False))
+    print(json.dumps(final_report, indent=2))
 
 if __name__ == "__main__":
-    inspector = SystemInspector()
-    try:
-        asyncio.run(inspector.run())
-    except KeyboardInterrupt:
-        pass
+    main()

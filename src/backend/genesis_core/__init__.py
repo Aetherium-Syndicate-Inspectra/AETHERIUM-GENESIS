@@ -5,5 +5,9 @@ from .dna import (
     MemoryDAG,
     ReflexSignal,
     ReflexType,
-    NirodhaState
+    NirodhaState,
+    TraceableDNA,
+    AutonomySeed,
+    MutationSeed,
+    DifferentiationCore
 )
