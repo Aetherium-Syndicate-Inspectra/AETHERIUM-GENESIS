@@ -29,7 +29,10 @@ from src.backend.genesis_core.models.visual import TemporalPhase, IntentCategory
 from src.backend.auth.routes import router as auth_router
 # Aetherium API Imports
 from src.backend.routers.aetherium import router as aetherium_router
+from src.backend.routers.metrics import router as metrics_router
+from src.backend.routers.metrics import MetricCollector
 from src.backend.genesis_core.bus.extreme import AetherBusExtreme
+from src.backend.security.key_manager import KeyManager
 
 from src.backend.departments.development.javana_core.reflex_kernel import JavanaKernel
 from src.backend.departments.development.javana_core.responses import REFLEX_PARAMS
@@ -77,6 +80,7 @@ app = FastAPI()
 app.add_middleware(GatekeeperMiddleware)
 app.include_router(auth_router)
 app.include_router(aetherium_router)
+app.include_router(metrics_router)
 
 # Global Services
 auditorium: Optional[AuditoriumService] = None
@@ -131,6 +135,18 @@ async def startup_event():
     await aether_bus.connect()
     app.state.aether_bus = aether_bus
     app.state.engine = engine # Expose engine to router
+
+    # Initialize Security & Metrics
+    app.state.key_manager = KeyManager()
+
+    metric_collector = MetricCollector.get_instance()
+    app.state.metric_collector = metric_collector
+
+    # Hook Metrics to Bus
+    await aether_bus.add_global_listener(metric_collector.track_event)
+
+    # Start Metrics Broadcast Loop
+    asyncio.create_task(metric_collector.broadcast_loop())
 
     # Start Auditorium Service
     auditorium = AuditoriumService(engine)
@@ -451,6 +467,14 @@ app.mount("/public", StaticFiles(directory="src/frontend/public"), name="public"
 @app.get("/dashboard")
 async def dashboard():
     return FileResponse("src/frontend/dashboard.html")
+
+@app.get("/public")
+async def public_gateway():
+    return FileResponse("src/frontend/aether_public.html")
+
+@app.get("/overseer")
+async def overseer_gateway():
+    return FileResponse("src/frontend/aether_overseer.html")
 
 # 3. Mount Root (The Living Interface)
 # NOTE: We mount src/frontend as root, so index.html is served at /

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, WebSocket, Request, WebSocketDisconnect, HTTPException
+from fastapi import APIRouter, WebSocket, Request, WebSocketDisconnect, HTTPException, Body
 from typing import Dict, Any, Optional
 import uuid
 import json
@@ -10,6 +10,8 @@ from src.backend.genesis_core.protocol.schemas import (
     AetherEvent, AetherEventType, StateData, IntentData, IntentVector
 )
 from src.backend.genesis_core.models.intent import SystemIntent, IntentPayload, IntentContext
+from src.backend.genesis_core.protocol.abe_contract import ABEContract
+from src.backend.security.key_manager import KeyManager
 
 logger = logging.getLogger("AetheriumAPI")
 
@@ -19,15 +21,51 @@ router = APIRouter(tags=["aetherium"])
 async def create_session(request: Request, body: Dict[str, Any]):
     """
     Control Plane: Establish a conscious connection.
+    Requires:
+    1. Valid .abe Contract (Identity)
+    2. Valid Access Key (Permission)
     """
-    client_type = body.get("client", "unknown")
-    capabilities = body.get("capabilities", [])
+    # 1. Extract Headers/Body
+    access_key = body.get("access_key")
+    abe_contract_json = body.get("abe_contract")
 
+    # 2. Key Manager Lookup
+    app_state = request.app.state
+    if not hasattr(app_state, "key_manager"):
+        # Fallback for testing/uninitialized state
+        logger.warning("KeyManager not found on app state. Allowing Anonymous (Dev Mode).")
+        # In PROD, raise HTTPException(503, "System Not Ready")
+    else:
+        key_manager: KeyManager = app_state.key_manager
+
+        # 3. Validate Contract & Key
+        try:
+            # Parse Contract
+            if not abe_contract_json:
+                raise ValueError("Missing .abe contract")
+
+            contract = ABEContract.from_json(json.dumps(abe_contract_json) if isinstance(abe_contract_json, dict) else abe_contract_json)
+
+            # Verify Key Bind
+            if not access_key:
+                raise ValueError("Missing Access Key")
+
+            if not key_manager.validate_access(access_key, contract.identity.abe_id):
+                 logger.warning(f"Session Rejected: Invalid Key/Subscription for {contract.identity.abe_id}")
+                 raise HTTPException(status_code=403, detail="Access Denied: Invalid Key or Subscription Suspended")
+
+            logger.info(f"✅ Session Authorized: {contract.identity.entity_name} [{contract.intent.primary_intent}]")
+
+        except ValueError as e:
+            logger.error(f"Contract Validation Error: {e}")
+            raise HTTPException(status_code=400, detail=str(e))
+        except Exception as e:
+             if isinstance(e, HTTPException): raise e
+             logger.error(f"Session Error: {e}")
+             raise HTTPException(status_code=500, detail="Internal Handshake Error")
+
+    # 4. Create Session
     session_id = f"ae-{uuid.uuid4().hex[:8]}"
-
-    logger.info(f"✨ New Session Requested: {session_id} [{client_type}]")
-
-    # Store session metadata if needed (Redis/Mem) - Skipping for now
 
     return {
         "session_id": session_id,
@@ -43,11 +81,9 @@ async def stream_endpoint(websocket: WebSocket):
     """
     await websocket.accept()
 
-    # Handshake: Wait for session_id or assume anonymous?
-    # For now, we assume query param or first message?
-    # Let's rely on query param ?session_id=... or just generate one if missing.
     session_id = websocket.query_params.get("session_id")
     if not session_id:
+        # Strict Mode: Should enforce session_id from /v1/session
         session_id = f"ae-anon-{uuid.uuid4().hex[:6]}"
 
     logger.info(f"🔗 Stream Connected: {session_id}")
@@ -62,16 +98,20 @@ async def stream_endpoint(websocket: WebSocket):
     bus = app_state.aether_bus
     engine = app_state.engine
 
+    # Metric Hook (if enabled)
+    metric_collector = getattr(app_state, "metric_collector", None)
+
     # 1. Define the Bridge (Bus -> WebSocket)
     async def bridge_callback(event: AetherEvent):
         try:
-            # We filter in the Bus usually, but double check
+            # Metric Tick
+            if metric_collector:
+                metric_collector.track_event(event)
+
             # Send to WS
             await websocket.send_text(event.model_dump_json())
         except Exception as e:
             logger.warning(f"Bridge Error {session_id}: {e}")
-            # If WS is dead, we might want to cancel subscription?
-            # The finally block handles it usually.
 
     # 2. Subscribe to the Aether
     await bus.subscribe(session_id, bridge_callback)
@@ -93,40 +133,27 @@ async def stream_endpoint(websocket: WebSocket):
             except json.JSONDecodeError:
                 continue
 
-            # Check if this is a keep-alive
             if payload.get("type") == "PING":
                 await websocket.send_json({"type": "PONG"})
                 continue
 
-            # Process Intent
-            # Map Client JSON to SystemIntent
-            # We assume the client sends something like { "text": "Hello" } or IntentVector
-
             user_text = payload.get("text", "")
             if not user_text and "intent_vector" in payload:
-                user_text = "[Abstract Intent]" # TODO: Handle pure vector input
+                user_text = "[Abstract Intent]"
 
             if user_text:
-                # Construct SystemIntent
                 intent = SystemIntent(
                     origin_agent=session_id,
                     target_agent="AgioSage_v1",
                     intent_type="COGNITIVE_QUERY",
                     payload=IntentPayload(content=user_text, modality="text"),
                     context=IntentContext(
-                        emotional_valence=0.0, # TODO: Parse from payload
+                        emotional_valence=0.0,
                         energy_level=0.5,
                         turbulence=0.0,
                         source_confidence=1.0
                     )
                 )
-
-                # 4. Invoke AgioSage with Emission
-                # Note: We access AgioSage via Engine -> Lifecycle
-                # We do NOT await the full process if we want to keep listening?
-                # Actually, AgioSage is async. If we await, we block input.
-                # But for a conversation, blocking is okay-ish.
-                # Ideally, spawn a task.
 
                 async def process_task():
                     try:
@@ -146,5 +173,4 @@ async def stream_endpoint(websocket: WebSocket):
     except Exception as e:
         logger.error(f"🔥 Stream Error: {e}")
     finally:
-        # Cleanup
         await bus.unsubscribe(session_id)
