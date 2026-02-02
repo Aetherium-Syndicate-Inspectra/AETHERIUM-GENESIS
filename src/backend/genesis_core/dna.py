@@ -134,3 +134,59 @@ class NirodhaState:
 
     # The target low-entropy state
     entropy_target: float = 0.0
+
+# -----------------------------------------------------------------------------
+# 6. Traceable DNA Base (รากฐานของ DNA ที่ตรวจสอบย้อนกลับได้)
+# -----------------------------------------------------------------------------
+@dataclass
+class TraceableDNA:
+    """Base class for all DNA components ensuring traceability."""
+    id: str = field(default_factory=lambda: hashlib.sha256(str(time.time()).encode()).hexdigest()[:16])
+    timestamp: float = field(default_factory=time.time)
+    version: str = "1.0.0"
+
+    @property
+    def fingerprint(self) -> str:
+        """Returns a unique fingerprint of the current state."""
+        return hashlib.sha256(f"{self.id}{self.timestamp}{self.version}".encode()).hexdigest()
+
+# -----------------------------------------------------------------------------
+# 7. Autonomy Seed (เมล็ดพันธุ์แห่งการปกครองตนเอง)
+# -----------------------------------------------------------------------------
+@dataclass
+class AutonomySeed(TraceableDNA):
+    """
+    Defines the logic and boundaries for self-governance.
+    """
+    decision_weight: float = 1.0
+    independence_factor: float = 0.5  # 0.0 = Fully Dependent, 1.0 = Fully Autonomous
+    governance_protocol: str = "standard_directive"
+
+# -----------------------------------------------------------------------------
+# 8. Mutation Seed (เมล็ดพันธุ์แห่งการเปลี่ยนแปลง)
+# -----------------------------------------------------------------------------
+@dataclass
+class MutationSeed(TraceableDNA):
+    """
+    Controls the rate and scope of structural changes (Systematic Evolution).
+    """
+    mutation_rate: float = 0.01
+    allowed_domains: List[str] = field(default_factory=list)
+    stability_threshold: float = 0.8
+    adaptive_mode: bool = True
+
+# -----------------------------------------------------------------------------
+# 9. Differentiation Core (แกนกลางแห่งการตระหนักรู้และแยกแยะ)
+# -----------------------------------------------------------------------------
+@dataclass
+class DifferentiationCore(TraceableDNA):
+    """
+    Manages self-awareness and boundary definition (Self vs. Environment).
+    """
+    self_awareness_index: float = 0.5
+    boundary_integrity: float = 1.0
+    identity_hash: str = ""  # Unique identifier for the current self-instance
+
+    def __post_init__(self):
+        if not self.identity_hash:
+            self.identity_hash = self.fingerprint
