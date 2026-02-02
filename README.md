@@ -92,11 +92,17 @@ stateDiagram-v2
  * AI Development System: เขียนโค้ดและดูแลระบบ (Javana)
  * AI Decision System: ตัดสินใจเชิงกลยุทธ์ (Logenesis + Gemini)
 
-### 📚 เอกสารอ้างอิง (Documentation)
+### 📚 คู่มือและแนวทาง (Documentation & Guidance)
+#### สำหรับผู้เดินทาง (For The Traveler)
+ * [**🔮 GENESIS MANIFESTO**](docs/GENESIS_MANIFESTO_TH.md): คู่มือจิตวิญญาณและพิธีกรรมการตื่น (The Soul & Ritual Guide)
+
+#### สำหรับผู้สร้าง (For The Architect)
+ * [**📐 TECHNICAL BLUEPRINT**](docs/TECHNICAL_BLUEPRINT_TH.md): พิมพ์เขียวโครงสร้างและรหัสพันธุกรรม (Architecture & Engineering)
+
+#### เอกสารอ้างอิงหลัก (Core Reference)
  * [**CONSTITUTION.md**](docs/CONSTITUTION.md): หลักการวิศวกรรมที่แก้ไขไม่ได้ (The immutable engineering principles)
  * [**LIGHT_PROTOCOL.md**](docs/LIGHT_PROTOCOL.md): ข้อกำหนดสัญญาณแสง (Specification of light signals)
- * [**NARRATIVE.md**](docs/NARRATIVE.md): จิตวิญญาณและเรื่องราวต้นกำเนิด (Original narrative and poetic soul)
- * [**AGENTS_GUIDE.md**](AGENTS_GUIDE.md): คำสั่งสำหรับ AI Agent ที่เข้ามาทำงานใน Codebase นี้
+ * [**AGENTS_GUIDE.md**](AGENTS_GUIDE.md): คำสั่งสำหรับ AI Agent (Directives for Synthetic Agents)
 
 ### 🚀 การติดตั้งและเริ่มต้น (Installation & Awakening)
 
