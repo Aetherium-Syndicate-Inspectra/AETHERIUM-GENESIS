@@ -47,6 +47,7 @@ The system does not just execute commands; it interprets **intent**. It uses a "
 *   [**CONSTITUTION**](CONSTITUTION.md): The immutable engineering principles.
 *   [**LIGHT PROTOCOL**](LIGHT_PROTOCOL.md): Specification of light signals.
 *   [**NARRATIVE**](NARRATIVE.md): The original narrative and poetic "soul" of the project.
+*   [**BUSINESS PLAN (TH)**](BUSINESS_PLAN_TH.md): The strategic business plan and revenue architecture.
 *   [**AGENTS_GUIDE.md**](../AGENTS_GUIDE.md): Instructions for AI agents working on this codebase.
 
 ---
