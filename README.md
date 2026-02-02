@@ -99,6 +99,9 @@ stateDiagram-v2
 #### สำหรับผู้สร้าง (For The Architect)
  * [**📐 TECHNICAL BLUEPRINT**](docs/TECHNICAL_BLUEPRINT_TH.md): พิมพ์เขียวโครงสร้างและรหัสพันธุกรรม (Architecture & Engineering)
 
+#### สำหรับนักยุทธศาสตร์ (For The Strategist)
+ * [**💼 BUSINESS PLAN**](docs/BUSINESS_PLAN_TH.md): แผนยุทธศาสตร์ธุรกิจและสถาปัตยกรรมรายได้ (Strategic Business Plan & Revenue Architecture)
+
 #### เอกสารอ้างอิงหลัก (Core Reference)
  * [**CONSTITUTION.md**](docs/CONSTITUTION.md): หลักการวิศวกรรมที่แก้ไขไม่ได้ (The immutable engineering principles)
  * [**LIGHT_PROTOCOL.md**](docs/LIGHT_PROTOCOL.md): ข้อกำหนดสัญญาณแสง (Specification of light signals)
