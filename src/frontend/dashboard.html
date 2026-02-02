@@ -954,7 +954,22 @@
                 // Show Tag
                 const tag = document.createElement('div');
                 tag.className = 'file-tag';
-                tag.innerHTML = `<span>📄 ${file.name}</span> <span style="cursor:pointer; font-weight:bold" onclick="this.parentElement.remove(); window.neuralChat.attachedContext=''">×</span>`;
+
+                const fileNameSpan = document.createElement('span');
+                fileNameSpan.textContent = `📄 ${file.name}`;
+                tag.appendChild(fileNameSpan);
+
+                const closeSpan = document.createElement('span');
+                closeSpan.textContent = ' ×';
+                closeSpan.style.cursor = 'pointer';
+                closeSpan.style.fontWeight = 'bold';
+                closeSpan.style.marginLeft = '5px';
+                closeSpan.addEventListener('click', () => {
+                    tag.remove();
+                    window.neuralChat.attachedContext = '';
+                });
+                tag.appendChild(closeSpan);
+
                 this.previewArea.appendChild(tag);
 
                 // Clear input to allow re-upload
