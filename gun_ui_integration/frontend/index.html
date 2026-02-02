@@ -18,15 +18,18 @@
             position: absolute;
             top: 20px;
             left: 20px;
-            color: #00f3ff;
+            color: rgba(0, 243, 255, 0.8);
             pointer-events: none;
+        }
+        #state-text {
+            transition: color 0.5s ease;
         }
     </style>
 </head>
 <body>
     <div id="status">
         SYSTEM: AETHERIUM GENESIS<br>
-        STATE: AWAKE (Waiting for Intent...)
+        STATE: <span id="state-text">AWAKE (Waiting for Intent...)</span>
     </div>
     <canvas id="gunCanvas"></canvas>
 
@@ -113,7 +116,10 @@
         ws.onmessage = function(event) {
             const data = JSON.parse(event.data);
             updateGlobalColor(data.color);
-            document.getElementById('status').innerHTML = `SYSTEM: AETHERIUM GENESIS<br>STATE: ${data.state.toUpperCase()}`;
+
+            const stateSpan = document.getElementById('state-text');
+            stateSpan.textContent = data.state.toUpperCase();
+            stateSpan.style.color = data.color;
         };
     </script>
 </body>
