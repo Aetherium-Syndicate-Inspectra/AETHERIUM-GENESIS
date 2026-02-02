@@ -40,15 +40,20 @@ class BusFactory:
             has_server_deps = False
 
         # Decision Logic
-        if not is_android and has_server_deps:
-            logger.info("🏭 BusFactory: Selecting AetherBusExtreme (Server Mode)")
-            from src.backend.genesis_core.bus.extreme import AetherBusExtreme
-            BusFactory._instance = AetherBusExtreme()
-        else:
-            mode = "Android" if is_android else "Legacy/Local"
-            logger.info(f"🏭 BusFactory: Selecting HyperSonicBus ({mode} Mode)")
-            from src.backend.genesis_core.bus.hyper_sonic import HyperSonicBus, HyperSonicReader
-            BusFactory._instance = HyperSonicBusWrapper(HyperSonicBus(), HyperSonicReader())
+        # NOTE: Temporarily disabling AetherBusExtreme auto-selection for Legacy Lifecycle
+        # because the new AetherBusExtreme (V2) has a different interface (Protocol Layer).
+        # The Legacy Lifecycle will continue to use HyperSonicBusWrapper for now.
+
+        # if not is_android and has_server_deps:
+        #     logger.info("🏭 BusFactory: Selecting AetherBusExtreme (Server Mode)")
+        #     from src.backend.genesis_core.bus.extreme import AetherBusExtreme
+        #     BusFactory._instance = AetherBusExtreme()
+        # else:
+
+        mode = "Android" if is_android else "Legacy/Local"
+        logger.info(f"🏭 BusFactory: Selecting HyperSonicBus ({mode} Mode)")
+        from src.backend.genesis_core.bus.hyper_sonic import HyperSonicBus, HyperSonicReader
+        BusFactory._instance = HyperSonicBusWrapper(HyperSonicBus(), HyperSonicReader())
 
         return BusFactory._instance
 
