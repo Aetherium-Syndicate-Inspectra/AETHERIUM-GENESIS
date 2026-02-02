@@ -19,11 +19,20 @@ from src.backend.auth.routes import router as auth_router
 from src.backend.departments.development.javana_core.reflex_kernel import JavanaKernel
 from src.backend.departments.development.javana_core.responses import REFLEX_PARAMS
 
+# Auditorium Imports
+from src.backend.genesis_core.auditorium.service import AuditoriumService
+from src.backend.genesis_core.bus.hyper_sonic import HyperSonicReader
+import zlib
+from typing import Optional
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("AetherServer")
 
 app = FastAPI()
 app.include_router(auth_router)
+
+# Global Services
+auditorium: Optional[AuditoriumService] = None
 
 # --- DEEPGRAM INTERFACE STUB ---
 class DeepgramTranscriber:
@@ -61,6 +70,87 @@ transcriber = DeepgramTranscriber(api_key=os.getenv("DEEPGRAM_API_KEY"))
 javana = JavanaKernel()
 
 clients = set()
+
+@app.on_event("startup")
+async def startup_event():
+    global auditorium
+    # Start Auditorium Service
+    auditorium = AuditoriumService(engine)
+    auditorium.start()
+
+    # Start Health Broadcast Bridge
+    asyncio.create_task(health_broadcast_loop())
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    global auditorium
+    if auditorium:
+        await auditorium.stop()
+
+async def broadcast_to_clients(message: dict):
+    if not clients:
+        return
+    txt = json.dumps(message)
+    disconnected = set()
+    for ws in clients:
+        try:
+            await ws.send_text(txt)
+        except Exception:
+            disconnected.add(ws)
+    for ws in disconnected:
+        clients.discard(ws)
+
+async def health_broadcast_loop():
+    """Reads health reports from AetherBus and broadcasts to WebSockets."""
+    reader = HyperSonicReader()
+    # Retry connection
+    connected = False
+    for _ in range(5):
+        if reader.connect():
+            connected = True
+            break
+        await asyncio.sleep(1)
+
+    if not connected:
+        logger.warning("Health Broadcast: Could not connect to AetherBus Reader (Bus might be cold)")
+        # We don't return here, we might want to retry later or just loop
+        # But for now let's assume if it fails initially, we retry in loop
+
+    logger.info("Health Broadcast Loop Started")
+    target_topic_hash = zlib.crc32("system.health.report".encode()) & 0xFFFFFFFF
+
+    while True:
+        try:
+            if not connected:
+                 if reader.connect():
+                     connected = True
+                 else:
+                     await asyncio.sleep(5)
+                     continue
+
+            found_any = False
+            # Read all available messages
+            for timestamp, msg_id, topic_hash, payload in reader.read():
+                if topic_hash == target_topic_hash:
+                    try:
+                        data = json.loads(payload)
+                        msg = {
+                            "type": "HEALTH_UPDATE",
+                            "payload": data
+                        }
+                        await broadcast_to_clients(msg)
+                        found_any = True
+                    except json.JSONDecodeError:
+                        pass
+
+            if not found_any:
+                await asyncio.sleep(1.0)
+            else:
+                await asyncio.sleep(0.1)
+
+        except Exception as e:
+            logger.error(f"Health Broadcast Error: {e}")
+            await asyncio.sleep(5)
 
 @app.websocket("/ws/v2/stream")
 async def websocket_v2_endpoint(websocket: WebSocket):

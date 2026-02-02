@@ -541,6 +541,11 @@ class LogenesisEngine:
             physics_params=PhysicsParams(spawn_rate=0, velocity_bias=[0.0, 0.0], decay_rate=0.1)
         )
 
+    def suspend(self) -> LogenesisResponse:
+        """External hook for Auditors to force Nirodha state."""
+        logger.warning("⚠️ SYSTEM SUSPEND TRIGGERED BY EXTERNAL AUDIT")
+        return self.enter_nirodha()
+
     def _calculate_qualia(self, intent: IntentVector) -> VisualQualia:
         """Derives visual qualia (color, shape, turbulence) from an intent vector.
 
