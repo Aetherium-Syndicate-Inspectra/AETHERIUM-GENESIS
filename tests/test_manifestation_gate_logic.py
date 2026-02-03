@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from src.backend.genesis_core.logenesis.engine import LogenesisEngine
-from src.backend.genesis_core.logenesis.visual_schemas import VisualParameters, IntentCategory, BaseShape, VisualSpecifics
+from src.backend.genesis_core.models.visual import VisualParameters, IntentCategory, BaseShape, VisualSpecifics
 
 @pytest.mark.asyncio
 async def test_manifestation_gate_command():

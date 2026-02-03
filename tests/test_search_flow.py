@@ -6,7 +6,7 @@ from unittest.mock import patch, MagicMock
 # Add src to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
-from backend.core.lightweight_ai import LightweightAI
+from src.backend.genesis_core.logenesis.lightweight_ai import LightweightAI
 from backend.core.search_schemas import SearchIntent
 from backend.core.google_search_provider import GoogleSearchProvider
 from backend.core.lcl import LightControlLogic

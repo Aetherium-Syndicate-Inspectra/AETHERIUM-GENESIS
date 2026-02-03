@@ -1,23 +1,22 @@
 GENESIS::OMNI_STATE_MANIFEST
 
 [STRUCTURE]
-- Declared Modules      : PARTIAL
-  - Active: src/backend (Core), src/frontend (Frontend)
-  - Config: src/backend/core/config.py
-  - Path Mismatch: Documentation refers to 'legacy/' but filesystem uses 'archive/'.
-- Orphan Components     : FOUND (2)
-  - gun_ui_integration/ (Redundant UI root)
-  - ai_utils_package/ (Standalone utility)
-- Redundant Concepts    : FOUND (list)
-  - src/backend/core (Minimal config) vs src/backend/genesis_core (Actual Logic)
+- Declared Modules      : OK
+  - Active: src/backend (Server/Core), src/frontend (Client)
+  - Config: src/backend/core (Configuration)
+  - Logic:  src/backend/genesis_core (Business Logic)
+- Orphan Components     : CLEARED
+- Redundant Concepts    : RESOLVED
+  - `src/backend/core` verified as Config.
+  - `src/backend/genesis_core` verified as Logic.
 
 [CONCEPTUAL LAYER]
 - Core Philosophy       : COHERENT
   - "Light as Protocol" enforced in `src/backend/genesis_core`.
   - "No Avatars" adhered to.
-- Naming Consistency    : FRACTURED
-  - 'legacy' vs 'archive' mismatch.
-  - 'departments' metaphor (Javana) sits alongside 'genesis' metaphor.
+- Naming Consistency    : IMPROVING
+  - 'legacy' path mismatch resolved.
+  - 'departments' metaphor (Javana) sits alongside 'genesis' metaphor (Pending Review).
 - Undefined Semantics   : NONE
 
 [CURRENT REALITY]
@@ -26,27 +25,27 @@ GENESIS::OMNI_STATE_MANIFEST
   - Javana Reflex Kernel (High-speed Audio Reflex)
   - WebSpeech Frontend (Input)
 - Dormant Designs       :
-  - Akashic Nirodha (Blockchain) [archive/legacy_v1]
-  - Niyama (IIT) [archive/legacy_v1]
-  - Inspira (Rituals) [archive/legacy_v1]
+  - Akashic Nirodha (Blockchain) [legacy/legacy_v1]
+  - Niyama (IIT) [legacy/legacy_v1]
+  - Inspira (Rituals) [legacy/legacy_v1]
+  - Mobile Runner [legacy/run_mobile_v1.py]
 - Abandoned Threads     :
-  - gunui_react [archive/legacy_v1]
-  - pwa_v1 [archive/legacy_v1]
+  - gunui_react [legacy/legacy_v1]
+  - pwa_v1 [legacy/legacy_v1]
 
 [RISKS]
 - Structural Risk       : LOW
-- Semantic Drift Risk   : MEDIUM
-  - Drift between documentation (AGENTS_GUIDE) and folder structure (archive vs legacy).
+- Semantic Drift Risk   : LOW
+  - Documentation and filesystem aligned.
 - Future Bug Vectors    :
-  - google-generativeai dependency (Deprecated)
+  - google-generativeai dependency (Deprecated) - Migration needed.
 
 [RECOMMENDATION]
 - Freeze Expansion      : YES
 - Refactor Priority     :
-  - Rename 'archive/' to 'legacy/' to align with AGENTS_GUIDE.
-  - Remove 'gun_ui_integration/' orphan.
+  - Migrate `google-generativeai` to `google-genai`.
 - Safe Extension Zones  :
   - src/backend/genesis_core
 
 [GENESIS NOTE]
-“The system is alive, but it must decide whether to grow or to remember who it is.”
+“The system is alive, and it remembers who it is.”

@@ -2,8 +2,8 @@ import pytest
 from unittest.mock import MagicMock, AsyncMock
 from src.backend.genesis_core.logenesis.engine import LogenesisEngine
 from src.backend.departments.presentation.light_schemas import LightAction
-from src.backend.genesis_core.logenesis.schemas import IntentPacket
-from src.backend.genesis_core.logenesis.visual_schemas import VisualParameters, IntentCategory, BaseShape, VisualSpecifics
+from src.backend.genesis_core.models.logenesis import IntentPacket
+from src.backend.genesis_core.models.visual import VisualParameters, IntentCategory, BaseShape, VisualSpecifics
 
 # --- Fixtures ---
 @pytest.fixture
