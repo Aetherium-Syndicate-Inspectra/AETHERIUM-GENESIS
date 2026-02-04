@@ -18,7 +18,14 @@ DATA_FILE = Path(__file__).resolve().parents[1] / "data" / "genesis_journal.json
 
 @dataclass(frozen=True)
 class JournalEntry:
-    """Represents a single journal entry stored in the Genesis journal."""
+    """Represent a single journal entry stored in the Genesis journal.
+
+    Attributes:
+        entry_id: Unique identifier assigned to the entry.
+        timestamp: ISO-8601 UTC timestamp for when the entry was created.
+        title: Short title summarizing the entry.
+        content: Full entry content.
+    """
 
     entry_id: str
     timestamp: str
@@ -27,7 +34,14 @@ class JournalEntry:
 
 
 def _load_entries(path: Path) -> List[JournalEntry]:
-    """Load journal entries from disk, returning an empty list if missing."""
+    """Load journal entries from disk.
+
+    Args:
+        path: Location of the JSON journal file.
+
+    Returns:
+        A list of journal entries. Returns an empty list when the file is missing.
+    """
     if not path.exists():
         return []
     raw_entries = json.loads(path.read_text(encoding="utf-8"))
@@ -35,14 +49,26 @@ def _load_entries(path: Path) -> List[JournalEntry]:
 
 
 def _save_entries(path: Path, entries: List[JournalEntry]) -> None:
-    """Persist journal entries to disk, creating parent directories as needed."""
+    """Persist journal entries to disk.
+
+    Args:
+        path: Location of the JSON journal file.
+        entries: Entries to serialize and save.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = [asdict(entry) for entry in entries]
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def _generate_entry_id(entries: List[JournalEntry]) -> str:
-    """Generate a unique entry identifier based on the current entry count."""
+    """Generate a unique entry identifier.
+
+    Args:
+        entries: Existing journal entries to avoid ID collisions.
+
+    Returns:
+        A new, unique entry identifier.
+    """
     existing_ids = {entry.entry_id for entry in entries}
     next_index = len(entries) + 1
     while True:
@@ -53,7 +79,16 @@ def _generate_entry_id(entries: List[JournalEntry]) -> str:
 
 
 def add_entry(title: str, content: str, path: Path = DATA_FILE) -> JournalEntry:
-    """Create a new journal entry and save it to the journal file."""
+    """Create a new journal entry and save it to the journal file.
+
+    Args:
+        title: Short title for the entry.
+        content: Full content for the entry.
+        path: Location of the JSON journal file.
+
+    Returns:
+        The newly created journal entry.
+    """
     entries = _load_entries(path)
     entry = JournalEntry(
         entry_id=_generate_entry_id(entries),
@@ -67,13 +102,25 @@ def add_entry(title: str, content: str, path: Path = DATA_FILE) -> JournalEntry:
 
 
 def list_entries(limit: int, path: Path = DATA_FILE) -> List[JournalEntry]:
-    """Return recent journal entries, newest first, honoring the limit."""
+    """Return recent journal entries, newest first, honoring the limit.
+
+    Args:
+        limit: Maximum number of entries to return. Use 0 for all entries.
+        path: Location of the JSON journal file.
+
+    Returns:
+        A list of journal entries ordered newest to oldest.
+    """
     entries = _load_entries(path)
     return list(reversed(entries[-limit:])) if limit > 0 else list(reversed(entries))
 
 
 def clear_entries(path: Path = DATA_FILE) -> None:
-    """Remove all journal entries from the journal file."""
+    """Remove all journal entries from the journal file.
+
+    Args:
+        path: Location of the JSON journal file.
+    """
     _save_entries(path, [])
 
 
@@ -107,7 +154,14 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _format_entry(entry: JournalEntry) -> str:
-    """Format a journal entry for human-readable CLI output."""
+    """Format a journal entry for human-readable CLI output.
+
+    Args:
+        entry: Journal entry to format.
+
+    Returns:
+        Formatted string for display in the CLI.
+    """
     return (
         f"[{entry.entry_id}] {entry.title}\n"
         f"  {entry.timestamp}\n"
