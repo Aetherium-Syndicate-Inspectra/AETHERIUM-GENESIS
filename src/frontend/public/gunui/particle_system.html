@@ -1,74 +1,409 @@
-<!-- gunui/particle_system.html -->
 <!DOCTYPE html>
-<html>
+<html lang="th">
 <head>
-    <title>GunUI Particle System</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GunUI Particle System — Aetherium Directive Renderer</title>
     <style>
+        :root {
+            --void-black: #050505;
+            --accent: #00ffff;
+            --warning: #ff9900;
+            --danger: #ff375f;
+        }
+
+        html,
         body {
             margin: 0;
+            height: 100%;
             overflow: hidden;
-            background-color: #000;
+            background: var(--void-black);
+            font-family: "Courier New", monospace;
+            color: var(--accent);
         }
+
         canvas {
             display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #dashboard {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            min-width: 280px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            pointer-events: none;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .row {
+            margin-bottom: 4px;
+            white-space: nowrap;
+        }
+
+        #energy-bar {
+            margin-top: 6px;
+            width: 100%;
+            height: 6px;
+            border-radius: 999px;
+            overflow: hidden;
+            background: #222;
+        }
+
+        #energy-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #19c37d, var(--warning), var(--danger));
+            transition: width 0.2s linear;
         }
     </style>
 </head>
 <body>
+    <div id="dashboard">
+        <div class="row">SYSTEM: AETHERIUM GENESIS / GunUI Directive Renderer</div>
+        <div class="row">STATE: <span id="state">VOID</span></div>
+        <div class="row">LOAD: <span id="load">0.00</span></div>
+        <div id="energy-bar"><div id="energy-fill"></div></div>
+        <div class="row">SHAPE: <span id="shape">none</span></div>
+        <div class="row">MODE: <span id="mode">BIT_24_RGB</span></div>
+    </div>
+
     <canvas id="particleCanvas"></canvas>
+
     <script>
-        const canvas = document.getElementById('particleCanvas');
-        const ctx = canvas.getContext('2d');
+        const SYSTEM_STATE = {
+            VOID: "VOID",
+            RESONATING: "RESONATING",
+            SPIRIT_REST: "SPIRIT_REST"
+        };
 
-        // กำหนดขนาด canvas ให้เท่ากับขนาดหน้าจอ
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-
-        // สร้างอนุภาค
-        class Particle {
+        class DSLInterpreter {
             constructor() {
-                this.x = Math.random() * canvas.width;
-                this.y = Math.random() * canvas.height;
-                this.size = Math.random() * 5 + 1;
-                this.speedX = Math.random() * 3 - 1.5;
-                this.speedY = Math.random() * 3 - 1.5;
-                this.color = `hsl(${Math.random() * 360}, 100%, 50%)`;
+                this.lastDirectives = null;
             }
 
-            update() {
-                this.x += this.speedX;
-                this.y += this.speedY;
+            parse(dsl, viewport) {
+                const normalized = {
+                    baseShape: dsl.base_shape || "sphere",
+                    chromaticMode: dsl.chromatic_mode || "BIT_24_RGB",
+                    palette: this.parsePalette(dsl.color_palette || {}),
+                    physics: this.parsePhysics(dsl.particle_physics || {}),
+                    intentCategory: dsl.intent_category || SYSTEM_STATE.RESONATING
+                };
 
-                // เมื่ออนุภาคออกนอกขอบจอ ให้กลับมาที่ขอบ
-                if (this.x < 0 || this.x > canvas.width) this.speedX *= -1;
-                if (this.y < 0 || this.y > canvas.height) this.speedY *= -1;
+                const targetPositions = this.calculateShape(normalized.baseShape, viewport);
+                this.lastDirectives = { ...normalized, targetPositions };
+                return this.lastDirectives;
             }
 
-            draw() {
-                ctx.fillStyle = this.color;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fill();
+            parsePalette(colorPalette) {
+                return {
+                    primary: colorPalette.primary || "#00ffff",
+                    secondary: colorPalette.secondary || "#800080"
+                };
+            }
+
+            parsePhysics(physics) {
+                return {
+                    turbulence: Number(physics.turbulence ?? 0),
+                    flowDirection: physics.flow_direction || "neutral"
+                };
+            }
+
+            calculateShape(shapeType, viewport) {
+                const { width, height, count } = viewport;
+                const centerX = width / 2;
+                const centerY = height / 2;
+                const points = [];
+
+                if (shapeType === "spiral_vortex") {
+                    for (let i = 0; i < count; i++) {
+                        const t = i / count;
+                        const angle = t * Math.PI * 20;
+                        const radius = t * Math.min(width, height) * 0.35;
+                        points.push({
+                            x: centerX + Math.cos(angle) * radius,
+                            y: centerY + Math.sin(angle) * radius
+                        });
+                    }
+                    return points;
+                }
+
+                if (shapeType === "nebula") {
+                    for (let i = 0; i < count; i++) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const radius = Math.random() ** 0.5 * Math.min(width, height) * 0.3;
+                        points.push({
+                            x: centerX + Math.cos(angle) * radius,
+                            y: centerY + Math.sin(angle) * radius
+                        });
+                    }
+                    return points;
+                }
+
+                for (let i = 0; i < count; i++) {
+                    const phi = (i / count) * Math.PI * 2;
+                    const radius = Math.min(width, height) * 0.23;
+                    points.push({
+                        x: centerX + Math.cos(phi) * radius,
+                        y: centerY + Math.sin(phi) * radius
+                    });
+                }
+                return points;
             }
         }
 
-        // สร้างอนุภาคจำนวน 100 อนุภาค
-        const particles = [];
-        for (let i = 0; i < 100; i++) {
-            particles.push(new Particle());
-        }
-
-        // ฟังก์ชันสำหรับอัปเดตและวาดอนุภาค
-        function animate() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            for (let i = 0; i < particles.length; i++) {
-                particles[i].update();
-                particles[i].draw();
+        class EnergyManager {
+            constructor(onRestState) {
+                this.currentLoad = 0;
+                this.isResting = false;
+                this.shadowMemory = [];
+                this.onRestState = onRestState;
+                this.channelWeights = {
+                    visual: 1.0,
+                    auditory: 0.8,
+                    semantic: 1.3,
+                    system: 0.5
+                };
             }
-            requestAnimationFrame(animate);
+
+            applyIntent(intentPayload = {}) {
+                const ppalPayload = this.applyPPALFilter(intentPayload);
+                const weight = this.channelWeights[ppalPayload.channel] ?? 1;
+                const intensity = Number(ppalPayload.intensity ?? 0);
+                const nextLoad = intensity * weight;
+                this.currentLoad = Math.min(1, Math.max(0, nextLoad * (1 + this.currentLoad ** 2)));
+
+                this.shadowMemory.push({
+                    at: Date.now(),
+                    load: this.currentLoad,
+                    channel: ppalPayload.channel
+                });
+                if (this.shadowMemory.length > 50) this.shadowMemory.shift();
+
+                if (this.currentLoad >= 1) {
+                    this.enterSpiritRest();
+                }
+                return this.currentLoad;
+            }
+
+            applyPPALFilter(payload) {
+                return {
+                    channel: payload.channel || "system",
+                    intensity: Math.max(0, Math.min(1, Number(payload.intensity ?? payload.load ?? 0)))
+                };
+            }
+
+            enterSpiritRest() {
+                this.isResting = true;
+                this.onRestState?.();
+            }
+
+            reset() {
+                this.isResting = false;
+                this.currentLoad = 0;
+            }
         }
 
-        animate();
+        class DumbParticleRenderer {
+            constructor(canvas, particleCount = 1200) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext("2d");
+                this.particles = [];
+                this.directives = null;
+                this.resting = false;
+                this.springFactor = 0.001;
+
+                this.resize();
+                window.addEventListener("resize", () => this.resize());
+
+                for (let i = 0; i < particleCount; i++) {
+                    this.particles.push({
+                        x: Math.random() * this.canvas.width,
+                        y: Math.random() * this.canvas.height,
+                        vx: 0,
+                        vy: 0,
+                        size: Math.random() * 1.8 + 0.5,
+                        targetX: this.canvas.width / 2,
+                        targetY: this.canvas.height / 2
+                    });
+                }
+            }
+
+            resize() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            }
+
+            updateFromDirectives(directives) {
+                this.directives = directives;
+                this.resting = false;
+                this.springFactor = directives.physics.flowDirection === "centripetal" ? 0.0014 : 0.001;
+
+                for (let i = 0; i < this.particles.length; i++) {
+                    const target = directives.targetPositions[i % directives.targetPositions.length];
+                    this.particles[i].targetX = target.x;
+                    this.particles[i].targetY = target.y;
+                }
+            }
+
+            enterSpiritRest() {
+                this.resting = true;
+            }
+
+            tick() {
+                const ctx = this.ctx;
+                ctx.fillStyle = "rgba(5, 5, 5, 0.32)";
+                ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                if (!this.directives) return;
+
+                const primary = this.directives.palette.primary;
+                const secondary = this.directives.palette.secondary;
+                const turbulence = this.resting ? 0.01 : this.directives.physics.turbulence * 0.08;
+
+                for (let i = 0; i < this.particles.length; i++) {
+                    const p = this.particles[i];
+                    const dx = p.targetX - p.x;
+                    const dy = p.targetY - p.y;
+
+                    p.vx += dx * this.springFactor;
+                    p.vy += dy * this.springFactor;
+                    p.vx += (Math.random() - 0.5) * turbulence;
+                    p.vy += (Math.random() - 0.5) * turbulence;
+                    p.vx *= this.resting ? 0.82 : 0.92;
+                    p.vy *= this.resting ? 0.82 : 0.92;
+                    p.x += p.vx;
+                    p.y += p.vy;
+
+                    const color = i % 2 === 0 ? primary : secondary;
+                    ctx.fillStyle = this.resting ? "rgba(255,255,255,0.08)" : color;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, this.resting ? p.size * 0.5 : p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+
+        class GunUIController {
+            constructor() {
+                this.state = SYSTEM_STATE.VOID;
+                this.canvas = document.getElementById("particleCanvas");
+                this.interpreter = new DSLInterpreter();
+                this.renderer = new DumbParticleRenderer(this.canvas);
+                this.energyManager = new EnergyManager(() => this.enterSpiritRest());
+                this.ws = null;
+
+                this.ui = {
+                    state: document.getElementById("state"),
+                    load: document.getElementById("load"),
+                    shape: document.getElementById("shape"),
+                    mode: document.getElementById("mode"),
+                    fill: document.getElementById("energy-fill")
+                };
+
+                this.initWebSocket();
+                this.seedDemoDirective();
+                this.animate();
+            }
+
+            initWebSocket() {
+                const protocol = location.protocol === "https:" ? "wss" : "ws";
+                const wsUrl = `${protocol}://${location.host || "localhost:8000"}/aetherbus`;
+
+                try {
+                    this.ws = new WebSocket(wsUrl);
+                    this.ws.onmessage = (event) => this.onMessage(event.data);
+                    this.ws.onopen = () => this.setState(SYSTEM_STATE.RESONATING);
+                    this.ws.onclose = () => this.setState(SYSTEM_STATE.VOID);
+                } catch {
+                    this.setState(SYSTEM_STATE.VOID);
+                }
+            }
+
+            onMessage(rawData) {
+                let message;
+                try {
+                    message = JSON.parse(rawData);
+                } catch {
+                    return;
+                }
+
+                switch (message.type) {
+                    case "COGNITIVE_DSL": {
+                        const directives = this.interpreter.parse(message.payload || {}, {
+                            width: this.canvas.width,
+                            height: this.canvas.height,
+                            count: this.renderer.particles.length
+                        });
+                        this.renderer.updateFromDirectives(directives);
+                        this.ui.shape.textContent = directives.baseShape;
+                        this.ui.mode.textContent = directives.chromaticMode;
+                        this.setState(directives.intentCategory || SYSTEM_STATE.RESONATING);
+                        break;
+                    }
+                    case "ENERGY_STATE": {
+                        const load = this.energyManager.applyIntent(message.payload || {});
+                        this.updateLoadUI(load);
+                        break;
+                    }
+                    case "SYSTEM_COMMAND": {
+                        if (message.command === "ENTER_NIRODHA") this.enterSpiritRest();
+                        break;
+                    }
+                    default:
+                        break;
+                }
+            }
+
+            enterSpiritRest() {
+                this.setState(SYSTEM_STATE.SPIRIT_REST);
+                this.renderer.enterSpiritRest();
+                document.body.style.backgroundColor = "#050505";
+            }
+
+            updateLoadUI(load) {
+                this.ui.load.textContent = load.toFixed(2);
+                this.ui.fill.style.width = `${Math.round(load * 100)}%`;
+            }
+
+            setState(nextState) {
+                this.state = Object.values(SYSTEM_STATE).includes(nextState)
+                    ? nextState
+                    : SYSTEM_STATE.RESONATING;
+                this.ui.state.textContent = this.state;
+                this.ui.state.style.color = this.state === SYSTEM_STATE.SPIRIT_REST ? "#ff9900" : "#00ffff";
+            }
+
+            seedDemoDirective() {
+                const demoMessage = {
+                    type: "COGNITIVE_DSL",
+                    payload: {
+                        base_shape: "spiral_vortex",
+                        color_palette: { primary: "#800080", secondary: "#00FFFF" },
+                        particle_physics: { turbulence: 0.4, flow_direction: "centripetal" },
+                        chromatic_mode: "BIT_24_RGB",
+                        intent_category: SYSTEM_STATE.RESONATING
+                    }
+                };
+                this.onMessage(JSON.stringify(demoMessage));
+            }
+
+            animate() {
+                this.renderer.tick();
+                requestAnimationFrame(() => this.animate());
+            }
+        }
+
+        window.addEventListener("DOMContentLoaded", () => {
+            new GunUIController();
+        });
     </script>
 </body>
 </html>
