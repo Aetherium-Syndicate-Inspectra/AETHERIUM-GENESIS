@@ -578,6 +578,7 @@
                 };
 
                 this.ws = null;
+                this.wsCandidates = ["/ws/v3/stream", "/ws"];
                 this.interpreter = new DSLInterpreter();
                 this.energy = new EnergyManager(() => this.enterSpiritRest());
                 this.backgroundRenderer = new ArchitectureBackgroundRenderer(document.getElementById("architecture-canvas"));
@@ -607,20 +608,67 @@
 
             initWebSocket() {
                 const protocol = location.protocol === "https:" ? "wss" : "ws";
-                const wsUrl = `${protocol}://${location.host || "localhost:8000"}/aetherbus`;
-                try {
-                    this.ws = new WebSocket(wsUrl);
-                    this.ws.onopen = () => {
-                        this.state.system = SYSTEM_STATE.RESONATING;
-                        this.log("system", `[SYSTEM] Connected to ${wsUrl}`);
-                    };
-                    this.ws.onclose = () => {
-                        this.state.system = SYSTEM_STATE.VOID;
-                        this.log("error", "[SYSTEM] AetherBus disconnected");
-                    };
-                    this.ws.onmessage = (event) => this.onMessage(event.data);
-                } catch {
-                    this.log("error", "[SYSTEM] WebSocket bootstrap failed, demo-only mode");
+                const connect = (routeIndex = 0) => {
+                    const path = this.wsCandidates[routeIndex];
+                    if (!path) {
+                        this.log("error", "[SYSTEM] WebSocket bootstrap failed, demo-only mode");
+                        return;
+                    }
+
+                    const wsUrl = `${protocol}://${location.host || "localhost:8000"}${path}`;
+                    let opened = false;
+
+                    try {
+                        this.ws = new WebSocket(wsUrl);
+                        this.ws.onopen = () => {
+                            opened = true;
+                            this.state.system = SYSTEM_STATE.RESONATING;
+                            this.log("system", `[SYSTEM] Connected to ${wsUrl}`);
+                        };
+                        this.ws.onclose = () => {
+                            this.state.system = SYSTEM_STATE.VOID;
+                            if (!opened && routeIndex < this.wsCandidates.length - 1) {
+                                const nextPath = this.wsCandidates[routeIndex + 1];
+                                this.log("error", `[SYSTEM] ${path} unavailable, retrying ${nextPath}`);
+                                connect(routeIndex + 1);
+                                return;
+                            }
+                            this.log("error", `[SYSTEM] WebSocket disconnected (${path})`);
+                        };
+                        this.ws.onmessage = (event) => this.onMessage(event.data);
+                    } catch {
+                        connect(routeIndex + 1);
+                    }
+                };
+
+                connect();
+            }
+
+            mapShape(shapeName) {
+                const normalized = String(shapeName || "").toLowerCase();
+                if (["spiral_vortex", "vortex"].includes(normalized)) return "spiral_vortex";
+                if (normalized === "nebula") return "nebula";
+                return "sphere";
+            }
+
+            handleVisualParams(message) {
+                const params = message.params || {};
+                this.applyDSL({
+                    base_shape: this.mapShape(params.base_shape),
+                    color_palette: params.color_palette || {},
+                    particle_physics: {
+                        turbulence: Number(params.turbulence ?? 0.2),
+                        flow_direction: params.flow_direction || "neutral"
+                    },
+                    chromatic_mode: params.chromatic_mode || "BIT_24_RGB",
+                    intent_category: message.meta?.category || SYSTEM_STATE.RESONATING
+                });
+
+                if (typeof message.meta?.energy === "number") {
+                    this.state.cognitiveLoad = this.energy.applyEnergyEnvelope({
+                        channel: "system",
+                        intensity: message.meta.energy
+                    });
                 }
             }
 
@@ -658,6 +706,31 @@
                     case "SYSTEM_COMMAND": {
                         if (message.command === "ENTER_NIRODHA") this.enterSpiritRest();
                         if (message.command === "EXIT_NIRODHA") this.exitSpiritRest();
+                        break;
+                    }
+                    case "VISUAL_PARAMS": {
+                        this.handleVisualParams(message);
+                        break;
+                    }
+                    case "state_update": {
+                        const energy = Number(message.state?.energy ?? 0);
+                        this.state.cognitiveLoad = this.energy.applyEnergyEnvelope({
+                            channel: "system",
+                            intensity: energy
+                        });
+                        this.state.system = String(message.state?.state || this.state.system).toUpperCase();
+                        break;
+                    }
+                    case "manifestation": {
+                        const m = message.manifestation || {};
+                        this.applyDSL({
+                            base_shape: this.mapShape(m.form),
+                            color_palette: { primary: m.color || "#00ffff", secondary: "#800080" },
+                            particle_physics: { turbulence: 0.3, flow_direction: "neutral" },
+                            chromatic_mode: "BIT_24_RGB",
+                            intent_category: SYSTEM_STATE.RESONATING
+                        });
+                        this.log("akashic", `[AKASHIC] Manifestation: ${m.intent || "resonance"}`);
                         break;
                     }
                     default:
