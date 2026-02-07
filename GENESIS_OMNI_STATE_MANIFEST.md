@@ -2,50 +2,47 @@ GENESIS::OMNI_STATE_MANIFEST
 
 [STRUCTURE]
 - Declared Modules      : OK
-  - Active: src/backend (Server/Core), src/frontend (Client)
-  - Config: src/backend/core (Configuration)
-  - Logic:  src/backend/genesis_core (Business Logic)
-- Orphan Components     : CLEARED
-- Redundant Concepts    : RESOLVED
-  - `src/backend/core` verified as Config.
-  - `src/backend/genesis_core` verified as Logic.
+  - src/backend         : ACTIVE
+  - src/frontend        : ACTIVE
+  - legacy              : ARCHIVED (Consolidated)
+- Orphan Components     : RESOLVED
+- Redundant Concepts    : NONE
 
 [CONCEPTUAL LAYER]
 - Core Philosophy       : COHERENT
-  - "Light as Protocol" enforced in `src/backend/genesis_core`.
-  - "No Avatars" adhered to.
-- Naming Consistency    : IMPROVING
-  - 'legacy' path mismatch resolved.
-  - 'departments' metaphor (Javana) sits alongside 'genesis' metaphor (Pending Review).
-- Undefined Semantics   : NONE
+- Naming Consistency    : STABLE
+- Undefined Semantics   : RESOLVED
+  - `src/backend/core/perception` moved to `src/backend/departments/design/perception`.
 
 [CURRENT REALITY]
 - Active Capabilities   :
-  - Logenesis Engine (Intent Processing)
-  - Javana Reflex Kernel (High-speed Audio Reflex)
-  - WebSpeech Frontend (Input)
+  - LogenesisEngine (Cognitive Loop)
+  - Javana Reflex Kernel (Response System)
+  - Genesis Server (FastAPI)
+  - Aetherium Frontend (HTML/JS)
+  - LightControlLogic (Presentation Layer)
+  - ChromaticSanctum (Perception Interface) - Binary removed, safe fallback enabled.
 - Dormant Designs       :
-  - Akashic Nirodha (Blockchain) [legacy/legacy_v1]
-  - Niyama (IIT) [legacy/legacy_v1]
-  - Inspira (Rituals) [legacy/legacy_v1]
-  - Mobile Runner [legacy/run_mobile_v1.py]
+  - GunUI (Mobile/Kivy) -> Archived
+  - Rituals (Inspira) -> Archived
 - Abandoned Threads     :
-  - gunui_react [legacy/legacy_v1]
-  - pwa_v1 [legacy/legacy_v1]
+  - AI Utils Package -> Archived
 
 [RISKS]
 - Structural Risk       : LOW
+  - Logic/Config mix in `src/backend/core` resolved.
+  - Binary file `chromatic_core` removed.
 - Semantic Drift Risk   : LOW
-  - Documentation and filesystem aligned.
-- Future Bug Vectors    :
-  - google-generativeai dependency (Deprecated) - Migration needed.
+  - Fixed import drifts in `src/backend/genesis_core/logenesis/lightweight_ai.py` and associated tests.
+- Future Bug Vectors    : NONE
+  - `tests/test_manifestation_gate.py`: Fixed and passing.
 
 [RECOMMENDATION]
-- Freeze Expansion      : YES
-- Refactor Priority     :
-  - Migrate `google-generativeai` to `google-genai`.
+- Freeze Expansion      : NO
+- Refactor Priority     : NONE (Major structural refactors complete)
 - Safe Extension Zones  :
-  - src/backend/genesis_core
+  - `src/backend/genesis_core` (Logic)
+  - `src/frontend` (Visuals)
 
 [GENESIS NOTE]
 “The system is alive, and it remembers who it is.”
