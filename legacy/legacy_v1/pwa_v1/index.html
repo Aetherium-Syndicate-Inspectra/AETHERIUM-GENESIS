@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Logenesis: Cognitive Light System</title>
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="icon-192.png">
+
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000000;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+        canvas { display: block; }
+
+        /* Minimal Control Layer */
+        #control-layer {
+            position: absolute;
+            bottom: 40px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #trigger-btn {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(8px);
+            pointer-events: auto;
+            transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+            cursor: pointer;
+            box-shadow: 0 0 0px rgba(255, 255, 255, 0);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #trigger-btn::after {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        /* Active State */
+        #trigger-btn.active {
+            border-color: rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.05);
+            transform: scale(0.95);
+        }
+
+        #trigger-btn.active::after {
+            background: #ffffff;
+            box-shadow: 0 0 10px #ffffff;
+        }
+
+        /* Listening/Talking State Pulse */
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.2); }
+            70% { box-shadow: 0 0 0 20px rgba(255, 255, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+        }
+
+        #trigger-btn.listening {
+            animation: pulse 1.5s infinite;
+            border-color: rgba(100, 200, 255, 0.5);
+        }
+
+        #trigger-btn.listening::after {
+            background: #64c8ff;
+        }
+
+    </style>
+</head>
+<body>
+    <canvas id="gun-canvas"></canvas>
+
+    <div id="control-layer">
+        <div id="trigger-btn"></div>
+    </div>
+
+    <script>
+        // --- SERVICE WORKER ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('SW registered'))
+                    .catch(err => console.log('SW failed', err));
+            });
+        }
+
+        // ==========================================
+        // 1. INTENT -> LIGHT PHYSICS MAPPING
+        // ==========================================
+        class LightIntentMapper {
+            static hexToRgb(hex) {
+                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                return result ? [
+                    parseInt(result[1], 16),
+                    parseInt(result[2], 16),
+                    parseInt(result[3], 16)
+                ] : [120, 160, 255];
+            }
+
+            static map(response) {
+                const base = {
+                    color: [120, 160, 255],
+                    velocity: 1.0,
+                    density: 0.6,
+                    turbulence: 0.2
+                };
+
+                // Priority 1: Backend Visual Qualia (Computed by LogenesisEngine)
+                if (response.visual_qualia) {
+                    base.color = this.hexToRgb(response.visual_qualia.color);
+                    base.turbulence = response.visual_qualia.turbulence;
+                    base.density = response.visual_qualia.intensity;
+                }
+
+                // Priority 2: Intent Vector Modulation (Physics modifications)
+                if (response.intent_debug) {
+                    const urgency = response.intent_debug.decision_urgency;
+                    // Urgency increases velocity significantly
+                    base.velocity = 0.5 + (urgency * 2.5);
+
+                    // High urgency also adds turbulence if not already high
+                    if (urgency > 0.7) base.turbulence = Math.max(base.turbulence, 0.8);
+                }
+
+                return base;
+            }
+        }
+
+        // ==========================================
+        // 2. AUDIO ENERGY (Hybrid: Real + Simulated)
+        // ==========================================
+        class AudioEnergy {
+            constructor(audioElement = null) {
+                this.ctx = null;
+                this.analyser = null;
+                this.dataArray = null;
+                this.source = null;
+                this.isSimulating = false;
+                this.simulatedValue = 0;
+
+                if (audioElement) {
+                    this.initRealAudio(audioElement);
+                }
+            }
+
+            initRealAudio(audioElement) {
+                try {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    this.analyser = this.ctx.createAnalyser();
+                    this.analyser.fftSize = 256;
+                    this.source = this.ctx.createMediaElementSource(audioElement);
+                    this.source.connect(this.analyser);
+                    this.analyser.connect(this.ctx.destination);
+                    this.dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+                } catch (e) {
+                    console.warn("AudioContext init failed:", e);
+                }
+            }
+
+            // For TTS or systems without direct audio stream access
+            setSimulatedState(isSpeaking) {
+                this.isSimulating = isSpeaking;
+            }
+
+            getEnergy() {
+                // Mode A: Real Audio
+                if (this.analyser) {
+                    this.analyser.getByteFrequencyData(this.dataArray);
+                    const avg = this.dataArray.reduce((a, b) => a + b, 0) / this.dataArray.length;
+                    return avg / 255;
+                }
+
+                // Mode B: Simulated (for TTS)
+                if (this.isSimulating) {
+                    // Random fluctuation to mimic speech cadence
+                    this.simulatedValue = (Math.random() * 0.4) + 0.3; // 0.3 - 0.7
+                    // Smooth transition could be added here
+                    return this.simulatedValue;
+                }
+
+                return 0;
+            }
+        }
+
+        // ==========================================
+        // 2.5 VOICE MODULE (TTS)
+        // ==========================================
+        class VoiceModule {
+            constructor(audioEnergy) {
+                this.synth = window.speechSynthesis;
+                this.audioEnergy = audioEnergy;
+                this.voice = null;
+                // Try to load voices
+                if (this.synth.onvoiceschanged !== undefined) {
+                    this.synth.onvoiceschanged = () => this.loadVoice();
+                }
+                this.loadVoice();
+            }
+
+            loadVoice() {
+                const voices = this.synth.getVoices();
+                // Prefer "Google US English" or a standard English voice
+                this.voice = voices.find(v => v.name.includes('Google US English')) || voices.find(v => v.lang === 'en-US') || voices[0];
+            }
+
+            speak(text) {
+                if (!text) return;
+                if (this.synth.speaking) {
+                    this.synth.cancel();
+                }
+
+                const utterance = new SpeechSynthesisUtterance(text);
+                if (this.voice) utterance.voice = this.voice;
+                utterance.rate = 0.9; // Slightly slower/calmer
+                utterance.pitch = 1.0;
+
+                utterance.onstart = () => {
+                    this.audioEnergy.setSimulatedState(true);
+                    document.getElementById('trigger-btn').classList.add('active'); // Optional visual cue
+                };
+
+                utterance.onend = () => {
+                    this.audioEnergy.setSimulatedState(false);
+                    document.getElementById('trigger-btn').classList.remove('active');
+                };
+
+                this.synth.speak(utterance);
+            }
+        }
+
+        // ==========================================
+        // 3. LIGHT FIELD CORE (Physics Engine)
+        // ==========================================
+        class LightField {
+            constructor(particles = [], width, height) {
+                this.particles = particles;
+                this.width = width;
+                this.height = height;
+                this.state = {
+                    color: [120, 160, 255],
+                    velocity: 0.5,
+                    density: 0.6,
+                    turbulence: 0.2,
+                    audioEnergy: 0
+                };
+            }
+
+            updateFromIntent(lightParams) {
+                // Smooth transition could be implemented, but strict update for now
+                this.state = { ...this.state, ...lightParams };
+            }
+
+            updateFromAudio(energy) {
+                this.state.audioEnergy = energy;
+            }
+
+            step() {
+                const energyFactor = this.state.audioEnergy * 3.0; // Amplify audio effect
+
+                this.particles.forEach(p => {
+                    // 1. Turbulence / Browninan Motion
+                    const jitter = (Math.random() - 0.5) * (this.state.turbulence + energyFactor * 0.5);
+                    p.vx += jitter;
+                    p.vy += jitter;
+
+                    // 2. Friction
+                    p.vx *= 0.96;
+                    p.vy *= 0.96;
+
+                    // 3. Application of Velocity & Energy
+                    const speed = this.state.velocity * (0.5 + energyFactor);
+                    p.x += p.vx * speed;
+                    p.y += p.vy * speed;
+
+                    // 4. Soft Boundaries (Wrap-around for fluid feel)
+                    if (p.x < 0) p.x = this.width;
+                    if (p.x > this.width) p.x = 0;
+                    if (p.y < 0) p.y = this.height;
+                    if (p.y > this.height) p.y = 0;
+                });
+            }
+
+            // Helper to get current render color with alpha based on density/energy
+            getRenderStyle() {
+                const [r, g, b] = this.state.color;
+                // Density affects opacity
+                // Audio Energy adds brightness/opacity
+                const alpha = Math.min(1.0, (this.state.density * 0.5) + (this.state.audioEnergy * 0.8));
+                return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+            }
+        }
+
+        // ==========================================
+        // 4. GUN UI (INTEGRATION LAYER)
+        // ==========================================
+        class GunUI {
+            constructor(lightField, voiceModule) {
+                this.lightField = lightField;
+                this.voiceModule = voiceModule;
+                this.ws = null;
+                this.isListening = false;
+                this.recognition = null;
+
+                this.setupRecognition();
+                this.connect();
+                this.setupUI();
+            }
+
+            setupRecognition() {
+                if ('webkitSpeechRecognition' in window) {
+                    this.recognition = new webkitSpeechRecognition();
+                    this.recognition.continuous = false;
+                    this.recognition.lang = 'en-US';
+                    this.recognition.interimResults = false;
+
+                    this.recognition.onstart = () => {
+                        console.log("Mic Active");
+                    };
+
+                    this.recognition.onresult = (event) => {
+                        const text = event.results[0][0].transcript;
+                        console.log("User:", text);
+                        this.send(text);
+                    };
+
+                    this.recognition.onend = () => {
+                        console.log("Mic Ended");
+                        if (this.isListening) {
+                            try { this.recognition.start(); } catch(e){}
+                        } else {
+                             document.getElementById('trigger-btn').classList.remove('listening');
+                        }
+                    };
+
+                    this.recognition.onerror = (e) => {
+                        console.log("Mic Error", e);
+                        if (this.isListening && e.error !== 'no-speech') {
+                             // Retry logic could go here
+                        }
+                    };
+                }
+            }
+
+            setupUI() {
+                const btn = document.getElementById('trigger-btn');
+                btn.addEventListener('click', () => this.toggleListening());
+            }
+
+            connect() {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const host = window.location.host || 'localhost:8000';
+                // Use default if file served locally without server context
+                const wsUrl = window.location.host ? `${protocol}//${host}/ws` : 'ws://localhost:8000/ws';
+
+                console.log(`NET: Connecting to ${wsUrl}...`);
+                this.ws = new WebSocket(wsUrl);
+
+                this.ws.onopen = () => console.log("NET: Uplink Established");
+
+                this.ws.onmessage = (event) => {
+                     try {
+                         const msg = JSON.parse(event.data);
+                         this.handleMessage(msg);
+                     } catch(e) { console.error("Parse Error", e); }
+                };
+
+                this.ws.onclose = () => {
+                    console.log("NET: Disconnected. Retrying...");
+                    setTimeout(() => this.connect(), 3000);
+                };
+            }
+
+            handleMessage(msg) {
+                // Map Backend Response to Light Physics
+                const lightParams = LightIntentMapper.map(msg);
+                this.lightField.updateFromIntent(lightParams);
+
+                // Handle Voice
+                if (msg.text_content) {
+                    this.voiceModule.speak(msg.text_content);
+                }
+            }
+
+            send(text) {
+                if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+
+                // V1 Protocol (Compatible with Server)
+                const payload = {
+                    mode: "logenesis",
+                    input: {
+                        text: text,
+                        session_id: "logenesis_web"
+                    }
+                };
+                this.ws.send(JSON.stringify(payload));
+            }
+
+            toggleListening() {
+                if (!this.recognition) {
+                    alert("Speech Recognition API not supported in this browser.");
+                    return;
+                }
+
+                this.isListening = !this.isListening;
+                const btn = document.getElementById('trigger-btn');
+
+                if (this.isListening) {
+                    btn.classList.add('listening');
+                    try { this.recognition.start(); } catch(e){}
+
+                    // Visual feedback: Quick flash
+                    this.lightField.updateFromIntent({ velocity: 2.0, density: 0.8 });
+                    setTimeout(() => {
+                        this.lightField.updateFromIntent({ velocity: 0.5, density: 0.6 });
+                    }, 500);
+
+                } else {
+                    btn.classList.remove('listening');
+                    try { this.recognition.stop(); } catch(e){}
+                }
+            }
+        }
+
+        // ==========================================
+        // BOOTSTRAP
+        // ==========================================
+        const canvas = document.getElementById('gun-canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Init Particles
+        const particleCount = 600;
+        const particles = Array.from({ length: particleCount }, () => ({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            vx: 0,
+            vy: 0,
+            size: Math.random() * 2 + 1
+        }));
+
+        const lightField = new LightField(particles, canvas.width, canvas.height);
+        const audioEnergy = new AudioEnergy();
+        const voiceModule = new VoiceModule(audioEnergy);
+
+        // Start System
+        const system = new GunUI(lightField, voiceModule);
+
+        // Animation Loop
+        function animate() {
+            // Update Physics
+            const energy = audioEnergy.getEnergy();
+            lightField.updateFromAudio(energy);
+            lightField.step();
+
+            // Render
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; // Trails
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = lightField.getRenderStyle();
+
+            particles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size * (1 + energy), 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+
+    </script>
+</body>
+</html>

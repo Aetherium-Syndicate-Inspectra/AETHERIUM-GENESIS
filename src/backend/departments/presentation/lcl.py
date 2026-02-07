@@ -3,7 +3,7 @@ import uuid
 import numpy as np
 from typing import Dict, List, Deque, Optional
 from collections import deque
-from .light_schemas import (
+from src.backend.genesis_core.models.light import (
     LightIntent, LightInstruction, LightAction, LightEntity, LightState, PriorityLevel
 )
 from .formation_manager import FormationManager
@@ -134,7 +134,7 @@ class LightControlLogic:
         self._vel[idx] = vel
         self._energy_levels[idx] = energy
 
-        if target_pos:
+        if target_pos is not None:
             self._target_pos[idx] = target_pos
             self._has_target[idx] = True
         else:

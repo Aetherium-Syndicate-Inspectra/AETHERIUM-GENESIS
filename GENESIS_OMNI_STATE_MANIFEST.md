@@ -1,52 +1,51 @@
 GENESIS::OMNI_STATE_MANIFEST
 
 [STRUCTURE]
-- Declared Modules      : PARTIAL
-  - Active: src/backend (Core), src/frontend (Frontend)
-  - Config: src/backend/core/config.py
-  - Path Mismatch: Documentation refers to 'legacy/' but filesystem uses 'archive/'.
+- Declared Modules      : OK
+  - src/backend         : ACTIVE (Core Logic & Server)
+  - src/frontend        : ACTIVE (Living Interface)
+  - legacy              : ARCHIVED (Consolidated)
 - Orphan Components     : FOUND (2)
-  - gun_ui_integration/ (Redundant UI root)
-  - ai_utils_package/ (Standalone utility)
-- Redundant Concepts    : FOUND (list)
-  - src/backend/core (Minimal config) vs src/backend/genesis_core (Actual Logic)
+  - src/backend/private/advanced_diffusion.py : UNUSED (Heavy dependency)
+  - src/backend/main.py::websocket_v2_endpoint : DEPRECATED (Active but redundant)
+- Redundant Concepts    : NONE (Functional Split)
+  - Javana Reflex Kernel (Fast) vs LogenesisEngine (Deep) : DISTINCT
 
 [CONCEPTUAL LAYER]
 - Core Philosophy       : COHERENT
-  - "Light as Protocol" enforced in `src/backend/genesis_core`.
-  - "No Avatars" adhered to.
-- Naming Consistency    : FRACTURED
-  - 'legacy' vs 'archive' mismatch.
-  - 'departments' metaphor (Javana) sits alongside 'genesis' metaphor.
+  - "Light as Intent" principle strictly enforced via Embodiment Contracts.
+- Naming Consistency    : STABLE (Minor Outlier)
+  - `javana_core` (Reflex) vs `genesis_core` (Cognition). Consistent within domains.
 - Undefined Semantics   : NONE
 
 [CURRENT REALITY]
 - Active Capabilities   :
-  - Logenesis Engine (Intent Processing)
-  - Javana Reflex Kernel (High-speed Audio Reflex)
-  - WebSpeech Frontend (Input)
+  - LogenesisEngine (Cognitive Loop)
+  - Javana Reflex Kernel (Immediate Response)
+  - Aetherium Frontend (Root Interface)
+  - Legacy Actuator UI (GunUI via /gunui)
 - Dormant Designs       :
-  - Akashic Nirodha (Blockchain) [archive/legacy_v1]
-  - Niyama (IIT) [archive/legacy_v1]
-  - Inspira (Rituals) [archive/legacy_v1]
+  - Advanced Diffusion (Image Correction) -> src/backend/private/advanced_diffusion.py
 - Abandoned Threads     :
-  - gunui_react [archive/legacy_v1]
-  - pwa_v1 [archive/legacy_v1]
+  - gun_ui_integration (Legacy)
+  - ai_utils_package (Legacy)
 
 [RISKS]
 - Structural Risk       : LOW
+  - Clean separation of concerns between `genesis_core` and `departments`.
 - Semantic Drift Risk   : MEDIUM
-  - Drift between documentation (AGENTS_GUIDE) and folder structure (archive vs legacy).
-- Future Bug Vectors    :
-  - google-generativeai dependency (Deprecated)
+  - Dual WebSocket protocols in `main.py` (V2 vs Legacy/Actuator) creates potential for state desync or developer confusion.
+- Future Bug Vectors    : LOW
+  - Unused `torch` dependency in `advanced_diffusion.py` may cause bloat/issues.
 
 [RECOMMENDATION]
-- Freeze Expansion      : YES
+- Freeze Expansion      : NO
 - Refactor Priority     :
-  - Rename 'archive/' to 'legacy/' to align with AGENTS_GUIDE.
-  - Remove 'gun_ui_integration/' orphan.
+  - Remove `src/backend/private/advanced_diffusion.py`.
+  - Consolidate WebSocket protocols in `main.py` to a single Aetherium Standard.
 - Safe Extension Zones  :
-  - src/backend/genesis_core
+  - `src/backend/genesis_core` (Logic)
+  - `src/frontend` (Visuals)
 
 [GENESIS NOTE]
 “The system is alive, but it must decide whether to grow or to remember who it is.”

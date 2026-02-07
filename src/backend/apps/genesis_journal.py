@@ -18,6 +18,15 @@ DATA_FILE = Path(__file__).resolve().parents[1] / "data" / "genesis_journal.json
 
 @dataclass(frozen=True)
 class JournalEntry:
+    """Represent a single journal entry stored in the Genesis journal.
+
+    Attributes:
+        entry_id: Unique identifier assigned to the entry.
+        timestamp: ISO-8601 UTC timestamp for when the entry was created.
+        title: Short title summarizing the entry.
+        content: Full entry content.
+    """
+
     entry_id: str
     timestamp: str
     title: str
@@ -32,12 +41,26 @@ def _load_entries(path: Path) -> List[JournalEntry]:
 
 
 def _save_entries(path: Path, entries: List[JournalEntry]) -> None:
+    """Persist journal entries to disk.
+
+    Args:
+        path: Location of the JSON journal file.
+        entries: Entries to serialize and save.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = [asdict(entry) for entry in entries]
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def _generate_entry_id(entries: List[JournalEntry]) -> str:
+    """Generate a unique entry identifier.
+
+    Args:
+        entries: Existing journal entries to avoid ID collisions.
+
+    Returns:
+        A new, unique entry identifier.
+    """
     existing_ids = {entry.entry_id for entry in entries}
     next_index = len(entries) + 1
     while True:
@@ -66,10 +89,16 @@ def list_entries(limit: int, path: Path = DATA_FILE) -> List[JournalEntry]:
 
 
 def clear_entries(path: Path = DATA_FILE) -> None:
+    """Remove all journal entries from the journal file.
+
+    Args:
+        path: Location of the JSON journal file.
+    """
     _save_entries(path, [])
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build the CLI argument parser for the Genesis journal commands."""
     parser = argparse.ArgumentParser(
         description="Genesis Journal: capture intent-driven notes.",
     )
@@ -98,6 +127,14 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _format_entry(entry: JournalEntry) -> str:
+    """Format a journal entry for human-readable CLI output.
+
+    Args:
+        entry: Journal entry to format.
+
+    Returns:
+        Formatted string for display in the CLI.
+    """
     return (
         f"[{entry.entry_id}] {entry.title}\n"
         f"  {entry.timestamp}\n"
@@ -106,6 +143,7 @@ def _format_entry(entry: JournalEntry) -> str:
 
 
 def main() -> None:
+    """Run the Genesis Journal CLI entry point."""
     parser = build_parser()
     args = parser.parse_args()
 
