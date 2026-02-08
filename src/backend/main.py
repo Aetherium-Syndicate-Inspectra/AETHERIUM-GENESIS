@@ -459,20 +459,22 @@ async def websocket_endpoint(websocket: WebSocket):
 @app.get("/sw.js")
 async def get_sw():
     """
-    Serve the frontend service worker JavaScript file.
+    Serve the frontend service worker script to clients.
     
     Returns:
-        FileResponse: Response streaming the `src/frontend/public/sw.js` file with `application/javascript` media type.
+        FileResponse: A response streaming the service worker JavaScript file (`sw.js`) with media type `application/javascript`.
     """
     return FileResponse(os.path.join(BASE_DIR, "src/frontend/public/sw.js"), media_type="application/javascript")
 
 @app.get("/manifest.json")
 async def get_manifest():
     """
-    Serve the web application's manifest.json file.
+    Serve the application's web manifest used by Progressive Web App clients.
+    
+    Streams the frontend `manifest.json` file from the project's public frontend directory with media type `application/json`.
     
     Returns:
-        FileResponse: A response streaming the `src/frontend/public/manifest.json` file with media type `application/json`.
+        FileResponse: The response streaming the `manifest.json` file.
     """
     return FileResponse(os.path.join(BASE_DIR, "src/frontend/public/manifest.json"), media_type="application/json")
 
@@ -487,7 +489,7 @@ async def dashboard():
     Serve the dashboard HTML page.
     
     Returns:
-        FileResponse: A response that serves the dashboard.html file from the frontend directory.
+        FileResponse: A response that serves the dashboard HTML file at `BASE_DIR/src/frontend/dashboard.html`.
     """
     return FileResponse(os.path.join(BASE_DIR, "src/frontend/dashboard.html"))
 
@@ -497,7 +499,7 @@ async def public_gateway():
     Serve the public gateway HTML page.
     
     Returns:
-        FileResponse: Response that serves the `src/frontend/aether_public.html` file from the project base directory.
+        FileResponse: A response that serves the `src/frontend/aether_public.html` file from the project's base directory.
     """
     return FileResponse(os.path.join(BASE_DIR, "src/frontend/aether_public.html"))
 
@@ -507,7 +509,7 @@ async def overseer_gateway():
     Serve the Aether overseer HTML page.
     
     Returns:
-        FileResponse: Response serving the `aether_overseer.html` file from the project's frontend directory.
+        FileResponse: The `aether_overseer.html` file from the project's frontend directory.
     """
     return FileResponse(os.path.join(BASE_DIR, "src/frontend/aether_overseer.html"))
 
