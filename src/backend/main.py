@@ -458,10 +458,22 @@ async def websocket_endpoint(websocket: WebSocket):
 # 1. Specific Asset Routes (for clean URLs in PWA)
 @app.get("/sw.js")
 async def get_sw():
+    """
+    Serve the frontend service worker JavaScript file.
+    
+    Returns:
+        FileResponse: Response streaming the `src/frontend/public/sw.js` file with `application/javascript` media type.
+    """
     return FileResponse(os.path.join(BASE_DIR, "src/frontend/public/sw.js"), media_type="application/javascript")
 
 @app.get("/manifest.json")
 async def get_manifest():
+    """
+    Serve the web application's manifest.json file.
+    
+    Returns:
+        FileResponse: A response streaming the `src/frontend/public/manifest.json` file with media type `application/json`.
+    """
     return FileResponse(os.path.join(BASE_DIR, "src/frontend/public/manifest.json"), media_type="application/json")
 
 # 2. Mount Subdirectories
@@ -471,14 +483,32 @@ app.mount("/public", StaticFiles(directory=os.path.join(BASE_DIR, "src/frontend/
 
 @app.get("/dashboard")
 async def dashboard():
+    """
+    Serve the dashboard HTML page.
+    
+    Returns:
+        FileResponse: A response that serves the dashboard.html file from the frontend directory.
+    """
     return FileResponse(os.path.join(BASE_DIR, "src/frontend/dashboard.html"))
 
 @app.get("/public")
 async def public_gateway():
+    """
+    Serve the public gateway HTML page.
+    
+    Returns:
+        FileResponse: Response that serves the `src/frontend/aether_public.html` file from the project base directory.
+    """
     return FileResponse(os.path.join(BASE_DIR, "src/frontend/aether_public.html"))
 
 @app.get("/overseer")
 async def overseer_gateway():
+    """
+    Serve the Aether overseer HTML page.
+    
+    Returns:
+        FileResponse: Response serving the `aether_overseer.html` file from the project's frontend directory.
+    """
     return FileResponse(os.path.join(BASE_DIR, "src/frontend/aether_overseer.html"))
 
 # 3. Mount Root (The Living Interface)
