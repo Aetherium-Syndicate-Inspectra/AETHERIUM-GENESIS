@@ -7,7 +7,8 @@ import time
 import msgpack
 
 # Ensure src is in path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(BASE_DIR)
 
 # Try to load uvloop for high performance (Server Mode)
 try:
@@ -457,29 +458,29 @@ async def websocket_endpoint(websocket: WebSocket):
 # 1. Specific Asset Routes (for clean URLs in PWA)
 @app.get("/sw.js")
 async def get_sw():
-    return FileResponse("src/frontend/public/sw.js", media_type="application/javascript")
+    return FileResponse(os.path.join(BASE_DIR, "src/frontend/public/sw.js"), media_type="application/javascript")
 
 @app.get("/manifest.json")
 async def get_manifest():
-    return FileResponse("src/frontend/public/manifest.json", media_type="application/json")
+    return FileResponse(os.path.join(BASE_DIR, "src/frontend/public/manifest.json"), media_type="application/json")
 
 # 2. Mount Subdirectories
-app.mount("/gunui", StaticFiles(directory="src/frontend/public/gunui"), name="gunui")
-app.mount("/icons", StaticFiles(directory="src/frontend/public/icons"), name="icons")
-app.mount("/public", StaticFiles(directory="src/frontend/public"), name="public")
+app.mount("/gunui", StaticFiles(directory=os.path.join(BASE_DIR, "src/frontend/public/gunui"), html=True), name="gunui")
+app.mount("/icons", StaticFiles(directory=os.path.join(BASE_DIR, "src/frontend/public/icons")), name="icons")
+app.mount("/public", StaticFiles(directory=os.path.join(BASE_DIR, "src/frontend/public")), name="public")
 
 @app.get("/dashboard")
 async def dashboard():
-    return FileResponse("src/frontend/dashboard.html")
+    return FileResponse(os.path.join(BASE_DIR, "src/frontend/dashboard.html"))
 
 @app.get("/public")
 async def public_gateway():
-    return FileResponse("src/frontend/aether_public.html")
+    return FileResponse(os.path.join(BASE_DIR, "src/frontend/aether_public.html"))
 
 @app.get("/overseer")
 async def overseer_gateway():
-    return FileResponse("src/frontend/aether_overseer.html")
+    return FileResponse(os.path.join(BASE_DIR, "src/frontend/aether_overseer.html"))
 
 # 3. Mount Root (The Living Interface)
 # NOTE: We mount src/frontend as root, so index.html is served at /
-app.mount("/", StaticFiles(directory="src/frontend", html=True), name="root")
+app.mount("/", StaticFiles(directory=os.path.join(BASE_DIR, "src/frontend"), html=True), name="root")
