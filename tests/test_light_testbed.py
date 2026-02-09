@@ -1,8 +1,9 @@
 from fastapi.testclient import TestClient
-from src.backend.server import app
+from src.backend.main import app
 import json
 
 client = TestClient(app)
+
 
 def test_websocket_standard_spawn():
     with client.websocket_connect("/ws") as websocket:
@@ -23,6 +24,7 @@ def test_websocket_standard_spawn():
         # Pydantic tuple vs list conversion
         assert list(instruction["region"]) == [0.1, 0.1, 0.2, 0.2]
 
+
 def test_websocket_standard_voice_move():
     with client.websocket_connect("/ws") as websocket:
         payload = {
@@ -40,6 +42,7 @@ def test_websocket_standard_voice_move():
         # LCL defaults
         assert instruction["vector"] == [0.0, 0.0]
 
+
 def test_websocket_ai_mock_move_right():
     with client.websocket_connect("/ws") as websocket:
         payload = {
@@ -55,6 +58,7 @@ def test_websocket_ai_mock_move_right():
         assert instruction["intent"] == "MOVE"
         assert instruction["target"] == "TREE_CLUSTER_RIGHT"
         assert instruction["vector"] == [-0.25, 0.0]
+
 
 def test_websocket_ai_mock_spawn():
     with client.websocket_connect("/ws") as websocket:

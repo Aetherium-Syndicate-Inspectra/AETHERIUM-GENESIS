@@ -7,14 +7,11 @@ from unittest.mock import patch, MagicMock
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
 from src.backend.genesis_core.logenesis.lightweight_ai import LightweightAI
-from backend.core.search_schemas import SearchIntent
-from backend.core.google_search_provider import GoogleSearchProvider
-from backend.core.lcl import LightControlLogic
-from backend.core.light_schemas import LightIntent, LightAction
 from src.backend.genesis_core.models.search import SearchIntent
 from src.backend.departments.marketing.google_search_provider import GoogleSearchProvider
 from src.backend.departments.presentation.lcl import LightControlLogic
 from src.backend.genesis_core.models.light import LightIntent, LightAction
+
 
 class TestSearchFlow(unittest.TestCase):
     def test_intent_extraction(self):
@@ -61,17 +58,22 @@ class TestSearchFlow(unittest.TestCase):
             target="GLOBAL",
             intensity=0.8,
             color_hint="white",
-            source="search_provider"
+            source="search_provider",
+            text_content=summary
         )
 
         instruction = lcl.process(light_intent)
         self.assertIsNotNone(instruction)
 
-        # Manually attach text (as server does)
-        instruction.text_content = summary
+        # Manually attach text (as server does) - actually I put it in the intent above
+        # Check if lcl passed it through.
+        # Looking at LCL code:
+        # elif intent.action == LightAction.EMPHASIZE:
+        #      instruction = LightInstruction(..., text_content=intent.text_content)
 
         self.assertEqual(instruction.text_content, "Quantum: A summary of quantum mechanics.")
         self.assertEqual(instruction.color_profile, "white")
+
 
 if __name__ == '__main__':
     unittest.main()

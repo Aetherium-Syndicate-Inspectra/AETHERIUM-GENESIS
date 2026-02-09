@@ -4,9 +4,7 @@ GENESIS::OMNI_STATE_MANIFEST
 - Declared Modules      : OK
   - src/backend         : ACTIVE (Core Logic & Server)
   - src/frontend        : ACTIVE (Living Interface)
-- Orphan Components     : FOUND (2)
-  - tests/test_advanced_diffusion.py : ORPHAN (Source `src/backend/private/advanced_diffusion.py` is missing)
-  - tests/test_region_extractor.py : ORPHAN (Source `src/backend/core/region_extractor.py` is missing)
+- Orphan Components     : NONE
 - Redundant Concepts    : FOUND (1)
   - Dual WebSocket Protocols (/ws vs /ws/v2/stream) in `main.py`.
 
@@ -38,7 +36,6 @@ GENESIS::OMNI_STATE_MANIFEST
 [RECOMMENDATION]
 - Freeze Expansion      : NO
 - Refactor Priority     :
-  - Remove orphan tests (`tests/test_advanced_diffusion.py`, `tests/test_region_extractor.py`).
   - Consolidate WebSocket protocols in `main.py` to a single Aetherium Standard.
   - Migrate from `google-generativeai` to `google-genai`.
 - Safe Extension Zones  :

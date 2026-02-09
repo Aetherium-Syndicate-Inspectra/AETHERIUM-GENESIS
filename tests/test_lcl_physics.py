@@ -1,7 +1,7 @@
 import time
 import pytest
 from src.backend.departments.presentation.lcl import LightControlLogic
-from src.backend.departments.presentation.light_schemas import LightIntent, LightAction, PriorityLevel, LightEntity
+from src.backend.genesis_core.models.light import LightIntent, LightAction, PriorityLevel, LightEntity
 
 def test_gatekeeper_rate_limit():
     lcl = LightControlLogic()
@@ -13,7 +13,8 @@ def test_gatekeeper_rate_limit():
 
     assert lcl._check_rate_limit(source) is True
     assert lcl._check_rate_limit(source) is True
-    assert lcl._check_rate_limit(source) is False # 3rd time within window
+    assert lcl._check_rate_limit(source) is False  # 3rd time within window
+
 
 def test_gatekeeper_priority():
     lcl = LightControlLogic()
@@ -22,6 +23,7 @@ def test_gatekeeper_priority():
 
     assert lcl._check_priority(intent_low) is True
     assert lcl._check_priority(intent_high) is True
+
 
 def test_metabolism_energy():
     lcl = LightControlLogic()
@@ -34,6 +36,7 @@ def test_metabolism_energy():
     # MOVE costs 0.5
     assert lcl._deduct_energy(LightAction.MOVE) is True
     assert lcl.system_energy == 0.5
+
 
 def test_physics_tick():
     lcl = LightControlLogic()
@@ -56,6 +59,7 @@ def test_physics_tick():
     assert updated_entity.velocity[0] < 0.1
     assert abs(updated_entity.velocity[0] - 0.095) < 0.0001
 
+
 def test_target_position_zero_vector():
     lcl = LightControlLogic()
     entity = LightEntity(
@@ -70,6 +74,7 @@ def test_target_position_zero_vector():
     updated_entity = lcl.entities["e1"]
 
     assert updated_entity.target_position == (0.0, 0.0)
+
 
 def test_process_spawn_move():
     lcl = LightControlLogic()
