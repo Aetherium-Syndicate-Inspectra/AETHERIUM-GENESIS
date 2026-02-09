@@ -30,26 +30,6 @@ python -m uvicorn src.backend.main:app --reload --host 0.0.0.0 --port 8000
 
 ---
 
-## 2. Mobile Application (สำหรับ Android / Hybrid)
-ระบบรองรับการทำงานแบบ Native บน Android ผ่าน Kivy Framework
-
-### การจำลองบน Desktop (Hybrid Simulation)
-คุณสามารถทดสอบการทำงานของแอปมือถือบนคอมพิวเตอร์ได้ด้วยคำสั่ง:
-```bash
-python run.py
-```
-*คำสั่งนี้จะเปิดหน้าต่าง Kivy ขึ้นมาพร้อมกับรัน Backend ใน Thread เบื้องหลัง*
-
-### การสร้างไฟล์ติดตั้ง (Build APK)
-สำหรับการนำไปติดตั้งบนอุปกรณ์จริง ต้องใช้ **Buildozer** ในการคอมไพล์ โดยใช้ไฟล์ Config ที่:
-`archive/legacy_v1/kivy_specs/buildozer.spec`
-
-```bash
-# ตัวอย่างคำสั่ง Build (ต้องติดตั้ง Buildozer ก่อน)
-buildozer --spec archive/legacy_v1/kivy_specs/buildozer.spec android debug
-```
-
----
 
 ## 3. API & Connectivity
 สำหรับนักพัฒนาที่ต้องการเชื่อมต่อกับ "สมอง" (Cognitive Core) ของระบบโดยตรง

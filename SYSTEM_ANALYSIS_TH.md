@@ -83,24 +83,15 @@ python -m uvicorn src.backend.main:app --reload --host 0.0.0.0 --port 8000
 ```
 เข้าใช้งานผ่าน: `http://localhost:8000` (Product) หรือ `http://localhost:8000/dashboard` (Dev)
 
-**2. Mobile App (Hybrid Mode)**
-สำหรับรันบน Android หรือจำลอง Mobile Environment บน Desktop
-```bash
-# รันผ่าน Kivy Wrapper
-python run.py
-```
-*หมายเหตุ: โหมดนี้จะรัน Backend ใน Thread แยกและเปิดหน้าต่าง Kivy ขึ้นมา*
-
----
 
 ## 6. ปัญหาที่พบและข้อแนะนำ (Issues & Recommendations)
 
 ### 6.1 ความสับสนเรื่อง Entry Point
-*   **ปัญหา:** มีไฟล์ `run.py`, `awaken.py`, และ `src/backend/main.py` ทำหน้าที่คล้ายกัน
+*   **ปัญหา:** มีไฟล์ ``, `awaken.py`, และ `src/backend/main.py` ทำหน้าที่คล้ายกัน
 *   **สถานะปัจจุบัน:**
     *   `src/backend/main.py`: คือ Core Backend (FastAPI) จริง
     *   `awaken.py`: คือ Launcher สำหรับ Web/Dev
-    *   `run.py`: คือ Launcher สำหรับ Mobile/Kivy
+    *   ``: คือ Launcher สำหรับ Mobile/Kivy
 *   **การแก้ไข:** ได้ระบุความชัดเจนในเอกสารคู่มือการใช้งาน (USAGE) แล้ว
 
 ### 6.2 การพึ่งพา Tailwind CDN

@@ -30,26 +30,6 @@ python -m uvicorn src.backend.main:app --reload --host 0.0.0.0 --port 8000
 
 ---
 
-## 2. Mobile Application (Android / Hybrid)
-The system supports native Android execution via the Kivy Framework.
-
-### Desktop Simulation (Hybrid Mode)
-You can simulate the mobile app behavior on your desktop using:
-```bash
-python run.py
-```
-*This command launches a Kivy window while running the Backend in a background thread.*
-
-### Building for Device (Build APK)
-To install on a physical device, use **Buildozer** to compile the APK using the active configuration at:
-`archive/legacy_v1/kivy_specs/buildozer.spec`
-
-```bash
-# Example Build Command (Requires Buildozer)
-buildozer --spec archive/legacy_v1/kivy_specs/buildozer.spec android debug
-```
-
----
 
 ## 3. API & Connectivity
 For developers wishing to connect directly to the system's "Cognitive Core".
