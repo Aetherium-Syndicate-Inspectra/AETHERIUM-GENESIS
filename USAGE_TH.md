@@ -1,6 +1,6 @@
 # 📖 คู่มือการเข้าใช้งานระบบ AETHERIUM GENESIS
 
-ระบบ Aetherium Genesis ได้รับการออกแบบให้เป็น **Hybrid Platform** ที่สามารถเข้าถึงได้ผ่านหลายช่องทาง โดยแต่ละช่องทางมีวัตถุประสงค์การใช้งานที่แตกต่างกัน ดังนี้:
+ระบบ Aetherium Genesis ได้รับการออกแบบให้เป็น **Web-Native Platform** ที่สามารถเข้าถึงได้ผ่านหลายช่องทาง โดยแต่ละช่องทางมีวัตถุประสงค์การใช้งานที่แตกต่างกัน ดังนี้:
 
 ---
 
@@ -21,12 +21,12 @@ export PYTHONPATH=$PYTHONPATH:.
 python -m uvicorn src.backend.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### การเข้าถึง (Access Points)
+### จุดเชื่อมต่อระบบ (Access Points)
 *   **Product Interface:** [http://localhost:8000](http://localhost:8000)
-    *   หน้าจอหลักสำหรับผู้ใช้งานทั่วไป (Living Interface)
-    *   แสดงผลระบบ Particle และการตอบสนองทางอารมณ์
+    *   หน้าจอหลักสำหรับผู้ใช้ทั่วไป (The Living Interface)
+    *   แสดงผลระบบอนุภาค (Particle System) และการตอบสนองทางอารมณ์
 *   **Developer Dashboard:** [http://localhost:8000/dashboard](http://localhost:8000/dashboard)
-    *   หน้าจอสำหรับนักพัฒนา เพื่อดู Log, สถานะ Memory, และควบคุมตัวแปรต่างๆ
+    *   ศูนย์ควบคุมสำหรับนักพัฒนา เพื่อดู Logs, สถานะความจำ และปรับแต่งตัวแปรต่างๆ
 
 ---
 
