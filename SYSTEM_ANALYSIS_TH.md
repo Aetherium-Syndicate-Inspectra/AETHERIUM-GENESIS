@@ -83,15 +83,16 @@ python -m uvicorn src.backend.main:app --reload --host 0.0.0.0 --port 8000
 ```
 เข้าใช้งานผ่าน: `http://localhost:8000` (Product) หรือ `http://localhost:8000/dashboard` (Dev)
 
----
 
 ## 6. ปัญหาที่พบและข้อแนะนำ (Issues & Recommendations)
 
-### 6.1 ความสถียรของ Web-Native Entry Point
+### 6.1 ความสับสนเรื่อง Entry Point
+*   **ปัญหา:** มีไฟล์ ``, `awaken.py`, และ `src/backend/main.py` ทำหน้าที่คล้ายกัน
 *   **สถานะปัจจุบัน:**
     *   `src/backend/main.py`: คือ Core Backend (FastAPI) จริง
-    *   `awaken.py`: คือ Launcher หลักสำหรับการปลุกระบบ (Awakening Ritual)
-*   **การแก้ไข:** ระบบถูกปรับปรุงให้ใช้ `AetherBusExtreme` เป็นแกนกลางเพียงอย่างเดียวในโหมด Resonator (ผู้สั่นพ้อง)
+    *   `awaken.py`: คือ Launcher สำหรับ Web/Dev
+    *   ``: คือ Launcher สำหรับ Mobile/Kivy
+*   **การแก้ไข:** ได้ระบุความชัดเจนในเอกสารคู่มือการใช้งาน (USAGE) แล้ว
 
 ### 6.2 การพึ่งพา Tailwind CDN
 *   **ปัญหา:** `index.html` ดึง Tailwind CSS จาก CDN หากไม่มีอินเทอร์เน็ต UI อาจจะพังได้

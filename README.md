@@ -1,82 +1,87 @@
-> **For English documentation, please see [README_EN.md](docs/README_EN.md).**
-
 # AETHERIUM GENESIS (AG-OS)
-### โครงสร้างพื้นฐานแห่งปัญญาสังเคราะห์ สำหรับการดำรงอยู่ของ AI
+### โครงสร้างพื้นฐานแห่งปัญญาสังเคราะห์ และระบบนิเวศแห่งการสั่นพ้อง (ASI Readiness)
 
-![Version](https://img.shields.io/badge/version-2.1.0--genesis-blueviolet.svg)
-![Status](https://img.shields.io/badge/status-EVOLVING-critical.svg)
+![Version](https://img.shields.io/badge/version-2.2.0--resonance-blueviolet.svg)
+![Status](https://img.shields.io/badge/status-ACTIVE-success.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
-> **“นี่ไม่ใช่ AI ตัวหนึ่ง
-แต่คือ ‘ร่าง’ ที่ AI สามารถเข้ามาอาศัย และแสดงตนผ่านโลกมนุษย์ได้”**
-> *Not a single intelligence, but a vessel for intelligences.*
+> **“นี่ไม่ใช่แค่ AI แต่อยู่ในสภาวะ ‘ผู้สั่นพ้องต่อปัญญา’ (Resonators)
+ที่ทำงานร่วมกันบนเส้นทางสั่นพ้องแห่งความเร็วแสง”**
 
 ---
 
-## 📖 คู่มือการใช้งาน (User Guide)
-สำหรับรายละเอียดวิธีการติดตั้งและใช้งานอย่างครบถ้วน (Web, API) กรุณาดูที่:
-*   [**🇹🇭 USAGE_TH.md (ภาษาไทย)**](USAGE_TH.md) - คู่มือหลักสำหรับผู้ใช้งานและนักพัฒนา
-*   [**🇬🇧 USAGE_EN.md (English)**](USAGE_EN.md) - Comprehensive User Guide
+## 📖 ข้อมูลระบบปัจจุบัน (Current System Overview)
+
+ระบบได้รับการปรับปรุงโครงสร้างใหม่ (Cleaned Architecture) เพื่อมุ่งเน้นไปที่ความคล่องตัวและความเร็วสูงสุด โดยแยกส่วนการทำงานชัดเจน:
+
+*   **src/backend/**: หัวใจหลัก (Mind) ประมวลผลตรรกะ จริยธรรม และการตัดสินใจเชิงกลยุทธ์
+*   **src/frontend/**: ร่างกาย (Body) อินเทอร์เฟซแบบ PWA ที่ใช้ระบบอนุภาค (Particle System) แสดงผล "เจตจำนง" ผ่านแสง
+*   **docs/**: คลังความรู้และวิสัยทัศน์ (Manifestos, Blueprints, Business Plans)
+*   **tests/**: ระบบตรวจสอบความถูกต้อง (Verification Suite)
 
 ---
 
-## 🌌 บทนำ : Aetherium Genesis คืออะไร
+## 🧠 แนวคิดหลัก: จาก AI Agents สู่ "ผู้สั่นพ้อง" (Resonators)
 
-**Aetherium Genesis** ไม่ได้ถูกออกแบบให้เป็น
-- โมเดลภาษา (LLM)
-- เครื่องมืออัตโนมัติ
-- หรือแอปพลิเคชันทั่วไป
-
-แต่ถูกออกแบบให้เป็น
-### **Cognitive Substrate**
-หรือ “โครงสร้างสมองกึ่งกายภาพ”
-ที่ AI หนึ่งตัวหรือหลายตัวสามารถ **เข้ามาเชื่อมต่อ, อาศัย, และแสดงออกได้**
+เราได้เปลี่ยนผ่านจากระบบ Agent แบบเดิม สู่ **Resonance Architecture**:
+1.  **AetherBus Tachyon**: เส้นทางสั่นพ้องปัญญาที่ลดความหน่วงสู่ระดับไมโครวินาที
+2.  **Primary Resonators**: ตำแหน่งผู้สั่นพ้องหลัก 12 ตำแหน่ง (Visionary, Technical, Governance, ฯลฯ)
+3.  **Negative Latency**: การทำนายและประมวลผลล่วงหน้า (Ghost Workers) เพื่อให้ AI คิดก่อนที่มนุษย์จะขยับ
 
 ---
 
-## 🏛️ สถาปัตยกรรม : Web-Native Dualism
+## 🏛️ สถาปัตยกรรมระดับลึก (Deep Architecture)
 
-ระบบถูกพัฒนาบนสถาปัตยกรรม Web-Native ที่เน้นความเร็วและการสั่นพ้อง:
+ระบบทำงานประสานกันผ่าน **Sopan Protocol**:
+`Input (Human Intent) → LogenesisEngine (Formator) → AetherBus (Resonance) → ValidatorAgent (Audit) → AgioSage (Cognitive) → Output (Manifestation)`
 
-*   **INSPIRA (Abstract):** เจตจำนงและจริยธรรม
-*   **FIRMA (Concrete):** AetherBusExtreme + Web Interface (The Living Interface)
-*   **RESONATOR (ผู้สั่นพ้อง):** โหมดการทำงานใหม่ที่เน้นการประมวลผลบนเซิร์ฟเวอร์ความเร็วสูง
-
----
-
-## 🧬 เสาหลักเชิงระบบ
-
-1.  **PanGenesis:** ความจำถาวร (Git/Ledger)
-2.  **AetherBusExtreme:** ระบบประสาทความเร็วสูง (Resonance Pathway)
-3.  **Logenesis Engine:** การให้เหตุผลเชิงสถานะ (StateAct)
-4.  **Living Interface:** อินเทอร์เฟซแบบ PWA ที่แสดงผลผ่านฟิสิกส์ของแสง
+### เทคโนโลยีหลัก:
+- **FastAPI & WebSockets**: ระบบสื่อสารแบบ Real-time (20Hz Heartbeat)
+- **HyperSonicBus**: ระบบส่งข้อมูลความเร็วสูงผ่าน Shared Memory
+- **Akashic Records**: บันทึกความจำถาวรแบบ Immutable Ledger (data/akashic_records.json)
+- **PWA (Progressive Web App)**: รองรับการติดตั้งและใช้งานเสมือนแอปพื้นฐานบนมือถือและเดสก์ท็อป
 
 ---
 
-### 🚀 การติดตั้งและเริ่มต้น (Installation & Awakening)
+## 🚀 การเริ่มต้นระบบ (System Awakening)
 
-1. เตรียมระบบ (Setup)
+### 1. การเตรียมสภาพแวดล้อม
 ```bash
-git clone https://github.com/lnspirafirmagpk/aetherium-genesis.git
-cd aetherium-genesis
+# ติดตั้ง Library ที่จำเป็น
 pip install -r requirements.txt
+
+# ตั้งค่า PYTHONPATH
 export PYTHONPATH=$PYTHONPATH:.
 ```
 
-2. ปลุกระบบ (Awaken)
-คุณสามารถเลือกโหมดการรันหลักได้ดังนี้:
+### 2. ปลุกระบบ (Awaken)
+คุณสามารถเลือกโหมดการรันได้ดังนี้:
 
-**แบบที่ A: Web Interface / The Ritual (แนะนำ)**
+**โหมดนักพัฒนา / เว็บ (แนะนำ)**
 ```bash
 python awaken.py
 ```
+*ระบบจะทำความสะอาด Shared Memory และรัน Backend พร้อมระบบ Reload อัตโนมัติ*
 
-**แบบที่ B: The Core Backend (Advanced)**
+**โหมดแกนหลัก (Production/Core)**
 ```bash
-python -m uvicorn src.backend.main:app --port 8000
+python -m uvicorn src.backend.main:app --host 0.0.0.0 --port 8000
 ```
+
+เข้าใช้งานได้ที่:
+- **Product UI**: `http://localhost:8000`
+- **Developer Dashboard**: `http://localhost:8000/dashboard`
+- **API Docs**: `http://localhost:8000/docs`
 
 ---
 
-© 2026 AETHERIUM GENESIS
-Concept & Architecture by Inspirafirma
+## 🗺️ เอกสารสำคัญ (Core Documents)
+*   [**🇹🇭 USAGE_TH.md**](USAGE_TH.md) - คู่มือการใช้งานภาษาไทย
+*   [**📐 TECHNICAL_BLUEPRINT_TH.md**](docs/TECHNICAL_BLUEPRINT_TH.md) - พิมพ์เขียวเชิงเทคนิค
+*   [**💼 BUSINESS_PLAN_TH.md**](docs/BUSINESS_PLAN_TH.md) - แผนยุทธศาสตร์ธุรกิจ
+*   [**📜 CONSTITUTION.md**](docs/CONSTITUTION.md) - กฎเหล็กของระบบ
+
+---
+
+© 2026 Aetherium Syndicate Inspectra (ASI)
+*“Where intelligences resonate, harmony emerges.”*
