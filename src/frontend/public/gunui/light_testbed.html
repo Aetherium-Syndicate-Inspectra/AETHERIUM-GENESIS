@@ -62,7 +62,7 @@
 
         // --- WebSocket ---
         // Defaults to localhost:8000
-        const wsUrl = "ws://" + (window.location.hostname || "localhost") + ":8000/ws";
+        const wsUrl = "ws://" + (window.location.hostname || "localhost") + ":8000/ws/v3/stream";
         const ws = new WebSocket(wsUrl);
         const logDiv = document.getElementById('log');
 
@@ -157,9 +157,9 @@
         function sendVoice() {
             const text = voiceIn.value;
             if(!text) return;
+            // V3 Standard
             const payload = {
-                mode: modeSel.value,
-                input: { type: "voice", text: text }
+                text: text
             };
             ws.send(JSON.stringify(payload));
             voiceIn.value = "";

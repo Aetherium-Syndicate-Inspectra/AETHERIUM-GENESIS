@@ -694,7 +694,7 @@
 
                 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                 const host = window.location.host || 'localhost:8000';
-                const wsUrl = window.location.host ? `${protocol}//${host}/ws` : 'ws://localhost:8000/ws';
+                const wsUrl = window.location.host ? `${protocol}//${host}/ws/v3/stream` : 'ws://localhost:8000/ws/v3/stream';
 
                 console.log(`NET: Connecting to ${wsUrl}...`);
                 this.ws = new WebSocket(wsUrl);
@@ -761,8 +761,7 @@
             send(text) {
                 if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
                 const payload = {
-                    mode: "logenesis",
-                    input: { text: text, session_id: "logenesis_web" }
+                    text: text
                 };
                 this.ws.send(JSON.stringify(payload));
             }
@@ -1070,11 +1069,7 @@
                 // Send via System WebSocket
                 if (window.genesisCore && window.genesisCore.ws) {
                     window.genesisCore.ws.send(JSON.stringify({
-                        mode: "logenesis",
-                        input: {
-                            text: fullPayload,
-                            session_id: "neural_uplink"
-                        }
+                        text: fullPayload
                     }));
                 }
 
@@ -1234,6 +1229,21 @@
             // 4. Override Message Handling for Enterprise Features
             const oldHandleMessage = system.handleMessage;
             system.handleMessage = function(msg) {
+                // ADAPTER: AetherEvent -> Legacy
+                if (msg.type === "manifestation" && msg.manifestation) {
+                    const m = msg.manifestation;
+                    msg = {
+                         text_content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
+                         visual_qualia: {
+                            color: m.color,
+                            turbulence: m.resonance || 0.5,
+                            intensity: 1.0
+                         },
+                         // Preserve original fields if needed
+                         ...msg
+                    };
+                }
+
                 // Check if message is department specific
                 let department = null;
                 if (msg.intent_debug && msg.intent_debug.source_department) {

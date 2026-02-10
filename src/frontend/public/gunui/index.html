@@ -36,7 +36,7 @@
 
 <script>
 /* Configuration */
-const WS_URL = 'ws://' + (window.location.host || 'localhost:8000') + '/ws';
+const WS_URL = 'ws://' + (window.location.host || 'localhost:8000') + '/ws/v3/stream';
 const canvas = document.getElementById('scene');
 const ctx = canvas.getContext('2d', { alpha: true });
 let width = canvas.width = window.innerWidth;
@@ -349,7 +349,7 @@ async function startListening(){
 
   listeningStart = performance.now();
   vadLoop();
-  sendWS({ type:'INTENT_START', meta:{ ts: Date.now() } });
+  // sendWS({ type:'INTENT_START', meta:{ ts: Date.now() } });
 }
 
 function stopListening(){
@@ -366,10 +366,10 @@ function stopListening(){
 
   // Send recognized text if available
   if(finalTranscript && finalTranscript.length > 0) {
-      sendWS({ type:'INTENT_RECOGNIZED', text: finalTranscript });
+      sendWS({ text: finalTranscript });
   } else {
       // Fallback or just signal end
-      sendWS({ type:'INTENT_END', meta:{ duration: performance.now() - listeningStart } });
+      // sendWS({ type:'INTENT_END', meta:{ duration: performance.now() - listeningStart } });
   }
 }
 
@@ -408,6 +408,30 @@ function sendWS(payload){
 
 /* Handle server messages */
 function handleAetherMessage(msg){
+  // ADAPTER: AetherEvent -> Legacy
+  if (msg.type === "manifestation" && msg.manifestation) {
+       const m = msg.manifestation;
+       // Text
+       if (m.content) triggerAIResponse(typeof m.content === 'string' ? m.content : JSON.stringify(m.content));
+
+       // Visuals (Mapping to params)
+       const shapeMap = {
+           "sphere": "sphere",
+           "cube": "cube",
+           "vortex": "vortex",
+           "grid": "scatter",
+           "nebula": "cloud"
+       };
+       const baseShape = shapeMap[m.form] || "cloud";
+
+       applyVisualParams({
+           base_shape: baseShape,
+           color_palette: m.color,
+           turbulence: m.resonance || 0.1
+       });
+       return;
+  }
+
   if(msg.type === 'VISUAL_PARAMS'){
     applyVisualParams(msg.params || {});
   } else if(msg.type === 'AI_SPEAK'){
@@ -639,10 +663,10 @@ actuator.addEventListener('pointerdown', async (e) => {
   } else if(currentState === State.STABILIZED || currentState === State.MANIFESTATION){
     // Reset from Manifestation
     setState(State.IDLE);
-    sendWS({ type:'RESET' });
+    // sendWS({ type:'RESET' });
   } else if(currentState === State.RESONATING){
     setState(State.IDLE);
-    sendWS({ type:'RESET' });
+    // sendWS({ type:'RESET' });
   } else if(currentState === State.LISTENING){
     stopListening();
   }
