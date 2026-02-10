@@ -1,10 +1,9 @@
-from fastapi import APIRouter, WebSocket, Request, WebSocketDisconnect, HTTPException, Body
-from typing import Dict, Any, Optional
+from fastapi import APIRouter, WebSocket, Request, WebSocketDisconnect, HTTPException
+from typing import Dict, Any
 import uuid
 import json
 import logging
 import asyncio
-from datetime import datetime
 
 from src.backend.genesis_core.protocol.schemas import (
     AetherEvent, AetherEventType, StateData, IntentData, IntentVector
@@ -51,8 +50,8 @@ async def create_session(request: Request, body: Dict[str, Any]):
                 raise ValueError("Missing Access Key")
 
             if not key_manager.validate_access(access_key, contract.identity.abe_id):
-                 logger.warning(f"Session Rejected: Invalid Key/Subscription for {contract.identity.abe_id}")
-                 raise HTTPException(status_code=403, detail="Access Denied: Invalid Key or Subscription Suspended")
+                logger.warning(f"Session Rejected: Invalid Key/Subscription for {contract.identity.abe_id}")
+                raise HTTPException(status_code=403, detail="Access Denied: Invalid Key or Subscription Suspended")
 
             logger.info(f"✅ Session Authorized: {contract.identity.entity_name} [{contract.intent.primary_intent}]")
 
@@ -60,9 +59,10 @@ async def create_session(request: Request, body: Dict[str, Any]):
             logger.error(f"Contract Validation Error: {e}")
             raise HTTPException(status_code=400, detail=str(e))
         except Exception as e:
-             if isinstance(e, HTTPException): raise e
-             logger.error(f"Session Error: {e}")
-             raise HTTPException(status_code=500, detail="Internal Handshake Error")
+            if isinstance(e, HTTPException):
+                raise e
+            logger.error(f"Session Error: {e}")
+            raise HTTPException(status_code=500, detail="Internal Handshake Error")
 
     # 4. Create Session
     session_id = f"ae-{uuid.uuid4().hex[:8]}"
@@ -72,6 +72,7 @@ async def create_session(request: Request, body: Dict[str, Any]):
         "ws_endpoint": "/ws/v3/stream",
         "expires_in": 3600
     }
+
 
 @router.websocket("/ws/v3/stream")
 async def stream_endpoint(websocket: WebSocket):
