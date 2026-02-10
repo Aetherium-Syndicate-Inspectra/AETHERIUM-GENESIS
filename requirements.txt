@@ -22,3 +22,5 @@ nats-py
 uvloop
 msgpack
 orjson
+pytest-asyncio
+anyio
