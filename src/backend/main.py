@@ -37,9 +37,6 @@ from src.backend.genesis_core.bus.extreme import AetherBusExtreme
 from src.backend.security.key_manager import KeyManager
 from src.backend.genesis_core.entropy import AkashicTreasury, EntropyValidator
 
-from src.backend.departments.development.javana_core.reflex_kernel import JavanaKernel
-from src.backend.departments.development.javana_core.responses import REFLEX_PARAMS
-
 # Auditorium Imports
 from src.backend.genesis_core.auditorium.service import AuditoriumService
 from src.backend.genesis_core.bus.factory import BusFactory
@@ -89,40 +86,8 @@ app.include_router(entropy_router)
 # Global Services
 auditorium: Optional[AuditoriumService] = None
 
-# --- DEEPGRAM INTERFACE STUB ---
-class DeepgramTranscriber:
-    """Interface for Deepgram Live Transcription.
-
-    Disabled by default, using Mock Mode in development.
-    """
-    def __init__(self, api_key: str = None):
-        """Initializes the transcriber.
-
-        Args:
-            api_key: The Deepgram API key. If None, the transcriber is disabled.
-        """
-        self.api_key = api_key
-        self.enabled = False # Set to True if API key is provided and needed
-
-    async def transcribe_stream(self, audio_chunk: bytes):
-        """Transcribes a chunk of audio data.
-
-        Args:
-            audio_chunk: Raw audio bytes.
-
-        Returns:
-            The transcribed text, or None if disabled.
-        """
-        if not self.enabled:
-            return None
-        # Actual Deepgram implementation would go here
-        return "Deepgram Transcription Placeholder"
-
 # Initialize Engine and Transcriber
 engine = LogenesisEngine()
-transcriber = DeepgramTranscriber(api_key=os.getenv("DEEPGRAM_API_KEY"))
-# Initialize JAVANA (The Reflex System)
-javana = JavanaKernel()
 
 clients = set()
 
@@ -228,111 +193,6 @@ async def health_broadcast_loop():
     # Keep alive loop
     while True:
         await asyncio.sleep(3600)
-
-@app.websocket("/ws/v2/stream")
-async def websocket_v2_endpoint(websocket: WebSocket):
-    """
-    [DEPRECATED] WebSocket endpoint for V2 Streaming Protocol.
-    Please migrate to /v1/session + /ws/v3/stream (Aetherium Protocol).
-    """
-    await websocket.accept()
-    logger.info("V2 Client connected")
-    session_id = str(id(websocket))
-
-    try:
-        while True:
-            message = await websocket.receive()
-
-            if "bytes" in message:
-                # Handle binary audio (Mock: ignore or simple energy check)
-                audio_data = message["bytes"]
-
-                # --- JAVANA: Raw Speed Transducer ---
-                # Calculate Energy (RMS) from raw bytes
-                if len(audio_data) > 0:
-                    # Simple RMS approximation (assuming 8-bit unsigned or just signal magnitude)
-                    # Normalizing 0-255 byte values to 0.0-1.0 energy
-                    # Using variance from 128 (silence) for better accuracy if 8-bit PCM
-                    rms = math.sqrt(sum((b - 128)**2 for b in audio_data) / len(audio_data)) / 128.0
-
-                    # Update JAVANA Sensory Memory
-                    javana.update_sensors(energy=rms)
-
-                    # Check for Reflex
-                    reflex_action = javana.fast_react()
-                    if reflex_action:
-                        # INTERRUPT! Send Pre-baked Response immediately
-                        p = REFLEX_PARAMS[reflex_action]
-                        payload = {
-                            "type": "VISUAL_UPDATE",
-                            "payload": {
-                                "intent": p["intent_category"],
-                                "energy": p["energy_level"],
-                                "shape": p["visual_parameters"]["base_shape"],
-                                "color_code": p["visual_parameters"]["color_palette"]
-                            },
-                            "transcript_preview": f"[{reflex_action}]",
-                            "text_content": None
-                        }
-                        await websocket.send_text(json.dumps(payload))
-                        # continue # Skip AI processing for this frame (Optional, depending on desired overlap)
-                        # We continue to let transcriber run, but visual feedback is hijacked.
-
-                # In a real scenario, we'd feed this to transcriber
-                continue
-
-            elif "text" in message:
-                try:
-                    data = json.loads(message["text"])
-                except json.JSONDecodeError:
-                    continue
-
-                # Mock Transcriber Logic: Receive text to simulate voice
-                if data.get("type") in ["MOCK_TRANSCRIPTION", "TEXT_INPUT"]:
-                    text = data.get("text", "")
-                    logger.info(f"V2 Input: {text}")
-
-                    packet = IntentPacket(
-                        modality="text",
-                        embedding=None,
-                        energy_level=0.5,
-                        confidence=1.0,
-                        raw_payload=text
-                    )
-                    response: LogenesisResponse = await engine.process(packet, session_id=session_id)
-
-                    if response.visual_analysis:
-                        va = response.visual_analysis
-                        payload = {
-                            "type": "VISUAL_UPDATE",
-                            "payload": {
-                                "intent": va.intent_category,
-                                "energy": va.energy_level,
-                                "shape": va.visual_parameters.base_shape,
-                                "color_code": va.visual_parameters.color_palette
-                            },
-                            "transcript_preview": text,
-                            "text_content": response.text_content
-                        }
-                        await websocket.send_text(json.dumps(payload))
-
-                elif data.get("type") == "GET_IDLE_STATE":
-                    # Send initial idle parameters
-                    payload = {
-                        "type": "VISUAL_UPDATE",
-                        "payload": {
-                            "intent": "chat",
-                            "energy": 0.1,
-                            "shape": "sphere",
-                            "color_code": "#06b6d4"
-                        }
-                    }
-                    await websocket.send_text(json.dumps(payload))
-
-    except WebSocketDisconnect:
-        logger.info("V2 Client disconnected")
-    except Exception as e:
-        logger.error(f"V2 Server Error: {e}")
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
