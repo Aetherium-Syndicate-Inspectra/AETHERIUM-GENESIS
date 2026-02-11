@@ -5,15 +5,18 @@ import uuid
 import datetime
 from typing import Dict, Optional, List
 from enum import Enum
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+
 
 logger = logging.getLogger("KeyManager")
 
+
 class SubscriptionStatus(str, Enum):
     ACTIVE = "ACTIVE"
-    SUSPENDED = "SUSPENDED" # Payment issue / Paused
-    REVOKED = "REVOKED"     # Ban
-    PENDING = "PENDING"     # Created but not approved
+    SUSPENDED = "SUSPENDED"  # Payment issue / Paused
+    REVOKED = "REVOKED"      # Ban
+    PENDING = "PENDING"      # Created but not approved
+
 
 class KeyTier(str, Enum):
     FREE = "FREE"
@@ -21,18 +24,21 @@ class KeyTier(str, Enum):
     PRO = "PRO"
     INTERNAL = "INTERNAL"
 
+
 class AccessKeyRecord(BaseModel):
     key_id: str
-    access_key: str # The secret token
-    abe_id: str # Link to Identity Contract
+    access_key: str  # The secret token
+    abe_id: str  # Link to Identity Contract
     tier: KeyTier = KeyTier.FREE
     status: SubscriptionStatus = SubscriptionStatus.PENDING
     created_at: float
     last_used: float = 0.0
     label: Optional[str] = None
 
+
 class KeyStoreData(BaseModel):
-    keys: Dict[str, AccessKeyRecord] = {} # access_key -> Record
+    keys: Dict[str, AccessKeyRecord] = {}  # access_key -> Record
+
 
 class KeyManager:
     """
@@ -72,7 +78,7 @@ class KeyManager:
         3. Subscription is ACTIVE?
         """
         if access_key not in self.store.keys:
-            logger.warning(f"Access Denied: Key not found")
+            logger.warning("Access Denied: Key not found")
             return False
 
         record = self.store.keys[access_key]
@@ -89,7 +95,7 @@ class KeyManager:
 
         # Update Usage
         record.last_used = datetime.datetime.now().timestamp()
-        self._save() # Naive persist on use (optimize later)
+        self._save()  # Naive persist on use (optimize later)
 
         return True
 

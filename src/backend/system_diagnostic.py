@@ -1,23 +1,23 @@
 import sys
 import os
 import json
-import time
 import importlib.util
-import inspect
 from datetime import datetime
-from typing import Dict, List, Any, Optional
-from dataclasses import dataclass
+from typing import Dict, List, Any
 
 # Ensure src is in pythonpath
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from src.backend.genesis_core.audit.logger import EvolutionLogger
-from src.backend.genesis_core.dna import AutonomySeed, MutationSeed, DifferentiationCore, TraceableDNA
+
 
 # Initialize Logger
 logger = EvolutionLogger()
 
-CONSTITUTION_PATH = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "docs/CONSTITUTION.md"))
+CONSTITUTION_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "docs/CONSTITUTION.md")
+)
+
 
 def load_constitution(path: str = CONSTITUTION_PATH) -> Dict[str, Any]:
     """Loads and parses the CONSTITUTION.md file."""
@@ -47,6 +47,7 @@ def load_constitution(path: str = CONSTITUTION_PATH) -> Dict[str, Any]:
         "core_directives": directives
     }
 
+
 def check_missing_components(module_path: str, required_classes: List[str]) -> List[str]:
     """Checks if required classes exist in the module."""
     missing = []
@@ -60,13 +61,15 @@ def check_missing_components(module_path: str, required_classes: List[str]) -> L
                     missing.append(cls_name)
     except Exception as e:
         print(f"Error checking module components: {e}")
-        return required_classes # Assume all missing if error
+        return required_classes  # Assume all missing if error
     return missing
+
 
 def analyze_mutation_patterns(log_path: str) -> List[Dict[str, Any]]:
     """Analyzes mutation logs for patterns."""
     # Placeholder logic as we rely on EvolutionLogger
     return logger.read_logs("evolution", limit=50)
+
 
 def detect_anomalies(logs: List[Dict[str, Any]]) -> int:
     """Detects anomalies in logs."""
@@ -75,6 +78,7 @@ def detect_anomalies(logs: List[Dict[str, Any]]) -> int:
         if "error" in str(log).lower() or "violation" in str(log).lower():
             anomalies += 1
     return anomalies
+
 
 def validate_intent_alignment(dna_path: str, constitution_path: str, tolerance: float = 0.85) -> float:
     """Validates if DNA aligns with Constitution directives."""
@@ -87,7 +91,7 @@ def validate_intent_alignment(dna_path: str, constitution_path: str, tolerance: 
 
     directives = constitution.get("core_directives", [])
     if not directives:
-        return 0.0 # No directives found to validate against
+        return 0.0  # No directives found to validate against
 
     # Check if DNA classes exist and inherit from TraceableDNA
     try:
@@ -112,7 +116,7 @@ def validate_intent_alignment(dna_path: str, constitution_path: str, tolerance: 
                     else:
                         # Also check if it inherits from something that inherits from TraceableDNA
                         # This is a shallow check
-                        score += 0.5 # Exists but inheritance unclear
+                        score += 0.5  # Exists but inheritance unclear
 
             # Normalize score
             return score / checks if checks > 0 else 0.0
@@ -120,7 +124,8 @@ def validate_intent_alignment(dna_path: str, constitution_path: str, tolerance: 
     except Exception:
         return 0.0
 
-    return 1.0 # Default fallback if everything seems okay but logic was simple
+    return 1.0  # Default fallback if everything seems okay but logic was simple
+
 
 class DifferentiationMonitor:
     def check_self_awareness(self):
@@ -141,15 +146,16 @@ class DifferentiationMonitor:
     def detect_identity_conflicts(self):
         return []
 
+
 class MutationHealthMonitor:
     def __init__(self):
-        self.mutation_history = [] # In a real scenario, load from DB or logs
+        self.mutation_history = []  # In a real scenario, load from DB or logs
         self.constitution = load_constitution()
 
     def generate_health_report(self):
         return {
             "constitution_violations": self.check_constitution_compliance(),
-            "mutation_entropy": 0.5, # Placeholder
+            "mutation_entropy": 0.5,  # Placeholder
             "adaptive_capacity": "High",
             "evolutionary_trajectory": "Stable"
         }
@@ -157,14 +163,18 @@ class MutationHealthMonitor:
     def check_constitution_compliance(self):
         return []
 
+
 class EvolutionaryGuardrails:
     def __init__(self):
-        self.red_lines = [] # Load from config or constitution
+        self.red_lines = []  # Load from config or constitution
 
     def check_red_line_violations(self, system_state=None):
         return []
 
-def audit_dna_evolution(dna_file_path: str = "src/backend/genesis_core/dna.py", intent_file: str = CONSTITUTION_PATH):
+
+def audit_dna_evolution(
+    dna_file_path: str = "src/backend/genesis_core/dna.py", intent_file: str = CONSTITUTION_PATH
+):
     """Audits the DNA evolution."""
     abs_dna_path = os.path.abspath(dna_file_path)
 
@@ -183,6 +193,7 @@ def audit_dna_evolution(dna_file_path: str = "src/backend/genesis_core/dna.py", 
         "intent_alignment": intent_compliance
     }
 
+
 def audit_genesis_cycle():
     """Audits the Genesis Cycle (The Three Ticks)."""
     # Logic to read genesis_cycle.log and verify sequence
@@ -194,8 +205,9 @@ def audit_genesis_cycle():
         "integrity": True
     }
 
+
 def main():
-    print(f"Starting System Inspection Protocol (SIP)...")
+    print("Starting System Inspection Protocol (SIP)...")
     print(f"Constitution Path: {CONSTITUTION_PATH}")
 
     dna_path = os.path.join(os.path.dirname(__file__), "genesis_core/dna.py")
