@@ -36,7 +36,9 @@
 
 <script>
 /* Configuration */
-const WS_URL = 'ws://' + (window.location.host || 'localhost:8000') + '/ws/v3/stream';
+const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const host = window.location.host || 'localhost:8000';
+const WS_URL = `${protocol}//${host}/ws/v3/stream`;
 const canvas = document.getElementById('scene');
 const ctx = canvas.getContext('2d', { alpha: true });
 let width = canvas.width = window.innerWidth;
@@ -667,8 +669,6 @@ actuator.addEventListener('pointerdown', async (e) => {
   } else if(currentState === State.RESONATING){
     setState(State.IDLE);
     // sendWS({ type:'RESET' });
-  } else if(currentState === State.LISTENING){
-    stopListening();
   }
 });
 

@@ -1233,14 +1233,14 @@
                 if (msg.type === "manifestation" && msg.manifestation) {
                     const m = msg.manifestation;
                     msg = {
+                         // Preserve original fields if needed
+                         ...msg,
                          text_content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
                          visual_qualia: {
                             color: m.color,
                             turbulence: m.resonance || 0.5,
                             intensity: 1.0
-                         },
-                         // Preserve original fields if needed
-                         ...msg
+                         }
                     };
                 }
 

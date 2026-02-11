@@ -62,7 +62,9 @@
 
         // --- WebSocket ---
         // Defaults to localhost:8000
-        const wsUrl = "ws://" + (window.location.hostname || "localhost") + ":8000/ws/v3/stream";
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host || 'localhost:8000';
+        const wsUrl = `${protocol}//${host}/ws/v3/stream`;
         const ws = new WebSocket(wsUrl);
         const logDiv = document.getElementById('log');
 
