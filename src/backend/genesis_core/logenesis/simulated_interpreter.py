@@ -38,6 +38,12 @@ class SimulatedIntentInterpreter(IntentInterpreter):
 
         text_response = "I hear you."
 
+        reflective_signal = any(
+            w in text for w in [
+                "feel", "sad", "void", "meaning", "grief", "lonely", "heart", "soul", "true"
+            ]
+        )
+
         # 1. Detect Category
         if any(w in text for w in ["search", "find", "analyze", "check", "what", "how", "solve"]):
             category = ContractIntentCategory.ANALYTIC
@@ -52,6 +58,13 @@ class SimulatedIntentInterpreter(IntentInterpreter):
             effort = 0.6
             uncertainty = 0.3 # Creative chaos
             text_response = "Imagining a new possibility."
+
+        if reflective_signal:
+            # Deep reflective inputs should remain calm, high-effort, and semantically rich.
+            category = ContractIntentCategory.CREATIVE
+            effort = max(effort, 0.95)
+            uncertainty = min(uncertainty, 0.2)
+            text_response = "I sense deep context and signal density in this reflection."
 
         # 2. Detect Nuance
         if "hard" in text or "complex" in text:

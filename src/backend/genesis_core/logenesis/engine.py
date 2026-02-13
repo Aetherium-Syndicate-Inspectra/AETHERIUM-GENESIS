@@ -412,6 +412,8 @@ class LogenesisEngine:
             subjective = max(subjective, 0.4)
 
         urgency = vp.energy_level
+        if "reflective" in vp.semantic_concepts:
+            urgency = min(urgency, 0.2)
 
         precision = 0.1
         if vp.visual_parameters.base_shape in [BaseShape.CUBE, BaseShape.VORTEX]:
