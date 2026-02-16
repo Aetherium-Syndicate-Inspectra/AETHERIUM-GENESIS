@@ -98,6 +98,8 @@ class LogenesisResponse(BaseModel):
     intent_debug: Optional[IntentVector] = None
     state_metrics: Optional[StateMetrics] = None
     manifestation_granted: bool = Field(default=True, description="Whether the ValidatorAgent permitted this manifestation.")
+    # Backward-compatible channel consumed by manifestation gate tests and legacy clients.
+    light_intent: Optional[LightIntent] = None
 
     class Config:
         json_schema_extra = {

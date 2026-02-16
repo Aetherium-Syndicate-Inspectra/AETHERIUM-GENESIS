@@ -31,7 +31,17 @@ class PhysicsIntentData:
     uColor: Tensor = field(default_factory=lambda: torch.tensor([0.0, 0.0, 0.0]) if torch else [0.0, 0.0, 0.0])
 
     def __post_init__(self):
-        if torch and not isinstance(self.uColor, torch.Tensor):
+        if not torch:
+            return
+
+        try:
+            is_tensor = isinstance(self.uColor, torch.Tensor)
+        except TypeError:
+            # Some tests inject lightweight torch mocks where `torch.Tensor`
+            # is not a concrete type, which breaks isinstance checks.
+            is_tensor = False
+
+        if not is_tensor:
             self.uColor = torch.tensor(self.uColor, dtype=torch.float32)
 
 # -----------------------------------------------------------------------------
