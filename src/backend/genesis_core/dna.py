@@ -34,14 +34,13 @@ class PhysicsIntentData:
         if not torch:
             return
 
-        try:
-            is_tensor = isinstance(self.uColor, torch.Tensor)
-        except TypeError:
-            # Some tests inject lightweight torch mocks where `torch.Tensor`
-            # is not a concrete type, which breaks isinstance checks.
-            is_tensor = False
+        tensor_type = getattr(torch, "Tensor", None)
+        if not isinstance(tensor_type, type):
+            # Lightweight mocked torch objects may not expose a real Tensor type.
+            # Skip coercion to avoid mutating already-injected mock tensor objects.
+            return
 
-        if not is_tensor:
+        if not isinstance(self.uColor, tensor_type):
             self.uColor = torch.tensor(self.uColor, dtype=torch.float32)
 
 # -----------------------------------------------------------------------------

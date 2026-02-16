@@ -18,18 +18,7 @@ class RegionExtractor:
         if not self.validate(mask):
             raise ValueError("Mask out of bounds")
 
-        region = frame[:, mask.y_min:mask.y_max, mask.x_min:mask.x_max].clone()
-
-        # Compatibility path for mocked torch objects used in lightweight test environments.
-        # Real tensors expose a concrete tuple-like shape (torch.Size), while mocks do not.
-        if not isinstance(getattr(region, "shape", None), tuple):
-            channels = 3
-            frame_shape = getattr(frame, "shape", None)
-            if isinstance(frame_shape, tuple) and frame_shape:
-                channels = frame_shape[0]
-            region.shape = (channels, mask.y_max - mask.y_min, mask.x_max - mask.x_min)
-
-        return region
+        return frame[:, mask.y_min:mask.y_max, mask.x_min:mask.x_max].clone()
 
     def merge(self, full: torch.Tensor, updated_region: torch.Tensor, mask: SpatialMask) -> torch.Tensor:
         """

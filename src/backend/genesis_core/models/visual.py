@@ -78,6 +78,10 @@ class IntentData(BaseModel):
 class EmbodimentContract(BaseModel):
     """
     The Application Binary Interface (ABI) of Cognition.
+
+    Compatibility note:
+    - `intent.category` uses `ContractIntentCategory` for the modern contract.
+    - `intent_category` mirrors the legacy `IntentCategory` channel for older consumers.
     """
     contract_version: str = Field(default="1.0")
     timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
