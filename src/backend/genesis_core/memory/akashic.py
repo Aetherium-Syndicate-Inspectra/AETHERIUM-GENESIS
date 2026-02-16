@@ -104,6 +104,9 @@ class AkashicRecords:
         self.default_tenant_id = default_tenant_id
         self.backend = (backend or os.getenv("AKASHIC_BACKEND", "json")).lower()
 
+        if self.backend not in ("json", "firestore"):
+            raise ValueError(f"Unknown AKASHIC_BACKEND: '{self.backend}'. Supported: 'json', 'firestore'.")
+
         if self.backend == "firestore":
             self.store = FirestoreAkashicStore(
                 collection=firestore_collection,
