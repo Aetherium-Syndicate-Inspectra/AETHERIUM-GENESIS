@@ -31,8 +31,16 @@ class PhysicsIntentData:
     uColor: Tensor = field(default_factory=lambda: torch.tensor([0.0, 0.0, 0.0]) if torch else [0.0, 0.0, 0.0])
 
     def __post_init__(self):
-        if torch and not isinstance(self.uColor, torch.Tensor):
-            self.uColor = torch.tensor(self.uColor, dtype=torch.float32)
+        if torch:
+            is_tensor = False
+            try:
+                is_tensor = isinstance(self.uColor, torch.Tensor)
+            except TypeError:
+                # Fallback for mocked torch.Tensor which might not be a type
+                is_tensor = hasattr(self.uColor, 'dim') or hasattr(self.uColor, 'shape')
+
+            if not is_tensor:
+                self.uColor = torch.tensor(self.uColor, dtype=torch.float32)
 
 # -----------------------------------------------------------------------------
 # 2. Biological Sensory Data (ข้อมูลการมองเห็นเชิงชีวภาพ)
