@@ -25,3 +25,4 @@ uvloop
 msgpack
 orjson
 anyio
+google-cloud-firestore
