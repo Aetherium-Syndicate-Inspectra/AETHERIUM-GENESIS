@@ -32,7 +32,7 @@ class AccessKeyRecord(BaseModel):
     label: Optional[str] = None
 
 class KeyStoreData(BaseModel):
-    keys: Dict[str, AccessKeyRecord] = {} # access_key -> Record
+    keys: Dict[str, AccessKeyRecord] = Field(default_factory=dict) # access_key -> record
 
 class KeyManager:
     """
@@ -68,7 +68,7 @@ class KeyManager:
         """
         Core Check:
         1. Key exists?
-        2. Key matches .abe Identity?
+        2. Key matches ABE identity?
         3. Subscription is ACTIVE?
         """
         if access_key not in self.store.keys:
