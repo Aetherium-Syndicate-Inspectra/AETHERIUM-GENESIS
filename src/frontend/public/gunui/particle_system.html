@@ -672,6 +672,21 @@
                 }
             }
 
+            normalizeMessageType(type) {
+                const rawType = String(type || "").trim();
+                const upperType = rawType.toUpperCase();
+
+                if (["COGNITIVE_DSL", "ENERGY_STATE", "SYSTEM_COMMAND", "VISUAL_PARAMS", "COGNITIVE_METRICS", "AKASHIC_EVENT"].includes(upperType)) {
+                    return upperType;
+                }
+
+                if (["state_update", "manifestation", "handshake", "degradation", "error"].includes(rawType)) {
+                    return rawType;
+                }
+
+                return rawType;
+            }
+
             onMessage(raw) {
                 let message;
                 try {
@@ -680,7 +695,8 @@
                     return;
                 }
 
-                switch (message.type) {
+                const normalizedType = this.normalizeMessageType(message.type);
+                switch (normalizedType) {
                     case "COGNITIVE_DSL": {
                         this.applyDSL(message.payload || {});
                         break;
@@ -731,6 +747,16 @@
                             intent_category: SYSTEM_STATE.RESONATING
                         });
                         this.log("akashic", `[AKASHIC] Manifestation: ${m.intent || "resonance"}`);
+                        break;
+                    }
+                    case "handshake": {
+                        this.state.system = SYSTEM_STATE.RESONATING;
+                        this.log("system", "[SYSTEM] Aetherium stream handshake received");
+                        break;
+                    }
+                    case "degradation":
+                    case "error": {
+                        this.log("error", `[SYSTEM] Stream warning: ${message.error || "Unknown error"}`);
                         break;
                     }
                     default:
