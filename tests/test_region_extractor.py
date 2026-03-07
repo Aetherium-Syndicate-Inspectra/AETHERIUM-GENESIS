@@ -17,22 +17,7 @@ def test_extract():
 
     extractor = RegionExtractor((100, 100, 3))
     mask = SpatialMask(10, 10, 20, 20)
-
-    # Primary path: real tensor extraction
-    frame = torch.randn(3, 100, 100)
     region = extractor.extract(frame, mask)
-
-    # Fallback path for mocked torch environments: define shape at test setup level
-    # rather than mutating production logic.
-    if not isinstance(region.shape, tuple):
-        frame = MagicMock()
-        sliced = MagicMock()
-        region = MagicMock()
-        type(region).shape = PropertyMock(return_value=(3, 10, 10))
-        frame.__getitem__.return_value = sliced
-        sliced.clone.return_value = region
-        region = extractor.extract(frame, mask)
-
     assert region.shape == (3, 10, 10)
 
 def test_merge():
@@ -60,18 +45,19 @@ def test_merge():
     assert result[0, 15, 15] > 0.0
 
     # Check outside region
-    outside_sum = result[:, 0:10, 0:10].sum()
-    if isinstance(outside_sum, Number):
-        assert outside_sum == 0
-    else:
-        assert isinstance(outside_sum, MagicMock)
+    assert result[:, 0:10, 0:10].sum() == 0
 
 def test_validate():
     extractor = RegionExtractor((100, 100, 3))
     assert extractor.validate(SpatialMask(0, 0, 10, 10))
     assert not extractor.validate(SpatialMask(-1, 0, 10, 10))
+    # x_max 101 is > w=100 ? Wait, index is usually exclusive for slice, but check validation.
+    # Validation: mask.x_max <= self.w.
+    # If x_max = 100, valid.
+    # If x_max = 101, invalid.
     assert extractor.validate(SpatialMask(0, 0, 100, 100))
     assert not extractor.validate(SpatialMask(0, 0, 101, 10))
+
 
 def test_extract_raises_on_out_of_bounds_mask():
     try:
