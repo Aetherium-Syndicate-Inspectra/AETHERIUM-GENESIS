@@ -5,46 +5,43 @@ GENESIS::OMNI_STATE_MANIFEST
   - src/backend         : ACTIVE (Core Logic & Server)
   - src/frontend        : ACTIVE (Living Interface)
   - legacy              : MERGED (Consolidated into active modules)
-- Orphan Components     : FOUND (2)
-  - src/backend/departments/development/javana_core : DORMANT (Used only in deprecated V2 path)
-  - src/backend/main.py::websocket_v2_endpoint : DEPRECATED (Zombie Protocol - Should be removed)
-- Redundant Concepts    : FOUND (2)
-  - Dual Cognitive Paths (LogenesisEngine vs JavanaKernel)
-  - Zombie WebSocket Protocol (/ws/v2/stream) still present in main.py despite deprecation.
+- Orphan Components     : NONE
+- Redundant Concepts    : LOW
+  - Single active stream path: /ws/v3/stream
 
 [CONCEPTUAL LAYER]
 - Core Philosophy       : COHERENT
   - "Light as Intent" principle strictly enforced via Embodiment Contracts.
 - Naming Consistency    : STABLE
-  - `javana_core` (Reflex) vs `genesis_core` (Cognition). Consistent within domains.
+  - `genesis_core` and Aetherium stream schemas align across backend and frontend adapters.
 - Undefined Semantics   : NONE
 
 [CURRENT REALITY]
 - Active Capabilities   :
   - LogenesisEngine (Cognitive Loop)
-  - Aetherium V3 Stream (Data Plane)
-  - Frontend (Visual Manifestation)
+  - Aetherium V3 Stream (Unified Data Plane)
+  - Frontend (Actuator + Dashboard + GunUI clients mapped to unified manifestation payloads)
 - Dormant Designs       :
-  - Javana Reflex Kernel (Accessible only via deprecated V2 endpoint)
+  - None operational in request path
 - Abandoned Threads     :
-  - src/backend/private/advanced_diffusion.py (CLEANED)
+  - Deprecated V2/legacy websocket pathways removed from backend runtime surface
 
 [RISKS]
-- Structural Risk       : MEDIUM
-  - JavanaKernel bypasses the primary cognitive loop (LogenesisEngine), creating a shadow logic path.
-- Semantic Drift Risk   : HIGH
-  - Presence of /ws/v2/stream in `main.py` contradicts system memory of removal, creating confusion about the active protocol.
+- Structural Risk       : LOW
+  - Legacy websocket/broadcast branches removed from server startup and shutdown flow.
+- Semantic Drift Risk   : LOW
+  - Unified endpoint + manifestation adapter patterns reduce protocol ambiguity.
 - Future Bug Vectors    : LOW
-  - Unused dependencies in `javana_core` might age poorly.
+  - Keep adapter mappings (`manifestation` -> `text_content`/`visual_qualia`) consistent for all clients.
 
 [RECOMMENDATION]
 - Freeze Expansion      : NO
 - Refactor Priority     :
-  - Delete `src/backend/main.py::websocket_v2_endpoint` immediately to resolve semantic drift.
-  - Decide on `JavanaKernel`: Integrate into `LogenesisEngine` or remove.
+  - Continue converging all UI consumers on normalized v3 payload handling.
+  - Add/expand websocket contract tests around `manifestation` adapter behavior.
 - Safe Extension Zones  :
   - `src/backend/genesis_core` (Logic)
   - `src/frontend` (Visuals)
 
 [GENESIS NOTE]
-“The system is alive, but it must decide whether to grow or to remember who it is.”
+“Consolidation completed: one stream, one language of manifestation.”

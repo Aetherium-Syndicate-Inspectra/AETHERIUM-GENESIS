@@ -36,7 +36,7 @@
 
 <script>
 /* Configuration */
-const WS_URL = 'ws://' + (window.location.host || 'localhost:8000') + '/ws';
+const WS_URL = 'ws://' + (window.location.host || 'localhost:8000') + '/ws/v3/stream';
 const canvas = document.getElementById('scene');
 const ctx = canvas.getContext('2d', { alpha: true });
 let width = canvas.width = window.innerWidth;
@@ -349,7 +349,6 @@ async function startListening(){
 
   listeningStart = performance.now();
   vadLoop();
-  sendWS({ type:'INTENT_START', meta:{ ts: Date.now() } });
 }
 
 function stopListening(){
@@ -366,10 +365,9 @@ function stopListening(){
 
   // Send recognized text if available
   if(finalTranscript && finalTranscript.length > 0) {
-      sendWS({ type:'INTENT_RECOGNIZED', text: finalTranscript });
+      sendWS({ text: finalTranscript });
   } else {
       // Fallback or just signal end
-      sendWS({ type:'INTENT_END', meta:{ duration: performance.now() - listeningStart } });
   }
 }
 
@@ -406,8 +404,25 @@ function sendWS(payload){
   if(ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload));
 }
 
+function normalizeAetherMessage(msg){
+  if(msg.type === 'manifestation' && msg.manifestation){
+    const m = msg.manifestation;
+    return {
+      ...msg,
+      text_content: typeof m.content === 'string' ? m.content : msg.text_content,
+      visual_qualia: {
+        color: m.color,
+        resonance: m.resonance,
+        form: m.form
+      }
+    };
+  }
+  return msg;
+}
+
 /* Handle server messages */
-function handleAetherMessage(msg){
+function handleAetherMessage(rawMsg){
+  const msg = normalizeAetherMessage(rawMsg);
   if(msg.type === 'VISUAL_PARAMS'){
     applyVisualParams(msg.params || {});
   } else if(msg.type === 'AI_SPEAK'){
@@ -415,6 +430,8 @@ function handleAetherMessage(msg){
   } else if(msg.type === 'MANIFEST'){
     setParticleTargetsFromCoords(msg.coords || []);
     setState(State.RESONATING);
+  } else if (msg.visual_qualia) {
+    applyVisualParams({ color_palette: msg.visual_qualia.color });
   } else if(msg.type === 'LOGENESIS_RESPONSE' || msg.type === 'LightInstruction'){
     const params = legacyToVisual(msg);
     applyVisualParams(params);
@@ -639,10 +656,8 @@ actuator.addEventListener('pointerdown', async (e) => {
   } else if(currentState === State.STABILIZED || currentState === State.MANIFESTATION){
     // Reset from Manifestation
     setState(State.IDLE);
-    sendWS({ type:'RESET' });
   } else if(currentState === State.RESONATING){
     setState(State.IDLE);
-    sendWS({ type:'RESET' });
   } else if(currentState === State.LISTENING){
     stopListening();
   }

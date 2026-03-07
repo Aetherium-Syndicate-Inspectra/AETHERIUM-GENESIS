@@ -475,7 +475,7 @@
                 const host = window.location.host;
                 // If served from file://, default to localhost:8000
                 const wsHost = host || 'localhost:8000';
-                const url = `${protocol}//${wsHost}/ws`;
+                const url = `${protocol}//${wsHost}/ws/v3/stream`;
 
                 console.log(`Connecting to ${url}`);
                 this.ws = new WebSocket(url);
@@ -484,7 +484,24 @@
                 this.ws.onclose = () => setTimeout(() => this.setupNetwork(), 2000);
             }
 
-            handleMessage(msg) {
+            normalizeIncomingMessage(msg) {
+                if (msg.type === "manifestation" && msg.manifestation) {
+                    const m = msg.manifestation;
+                    return {
+                        ...msg,
+                        text_content: typeof m.content === "string" ? m.content : msg.text_content,
+                        visual_qualia: {
+                            color: m.color,
+                            form: m.form,
+                            resonance: m.resonance
+                        }
+                    };
+                }
+                return msg;
+            }
+
+            handleMessage(rawMsg) {
+                const msg = this.normalizeIncomingMessage(rawMsg);
                 console.log("NET RX:", msg);
 
                 // 1. Speak Text & Visualize
@@ -503,9 +520,9 @@
                 }
 
                 // 2. Visuals (Fallback if not text)
-                if (msg.type === "VISUAL_PARAMS" && window.Genesis.engine) {
+                if ((msg.type === "VISUAL_PARAMS" || msg.visual_qualia) && window.Genesis.engine) {
                     // Update particle colors if needed
-                    const params = msg.params;
+                    const params = msg.params || (msg.visual_qualia ? { color_palette: msg.visual_qualia.color } : null);
                     if (params && params.color_palette) {
                         // Iterate and update color (simplified)
                         // window.Genesis.engine.particles.forEach(p => p.color = params.color_palette);
@@ -566,10 +583,7 @@
 
             sendInput(text) {
                 if (!this.ws) return;
-                this.ws.send(JSON.stringify({
-                    type: "INTENT_RECOGNIZED",
-                    text: text
-                }));
+                this.ws.send(JSON.stringify({ text }));
             }
 
             speak(text) {

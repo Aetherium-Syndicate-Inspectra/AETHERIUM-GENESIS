@@ -59,10 +59,11 @@ async def create_session(request: Request, body: Dict[str, Any]):
         except ValueError as e:
             logger.error(f"Contract Validation Error: {e}")
             raise HTTPException(status_code=400, detail=str(e))
+        except HTTPException as e:
+            raise HTTPException(status_code=e.status_code, detail=e.detail, headers=e.headers)
         except Exception as e:
-             if isinstance(e, HTTPException): raise e
-             logger.error(f"Session Error: {e}")
-             raise HTTPException(status_code=500, detail="Internal Handshake Error")
+            logger.error(f"Session Error: {e}")
+            raise HTTPException(status_code=500, detail="Internal Handshake Error")
 
     # 4. Create Session
     session_id = f"ae-{uuid.uuid4().hex[:8]}"

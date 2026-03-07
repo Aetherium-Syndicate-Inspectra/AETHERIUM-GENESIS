@@ -62,7 +62,7 @@
 
         // --- WebSocket ---
         // Defaults to localhost:8000
-        const wsUrl = "ws://" + (window.location.hostname || "localhost") + ":8000/ws";
+        const wsUrl = "ws://" + (window.location.hostname || "localhost") + ":8000/ws/v3/stream";
         const ws = new WebSocket(wsUrl);
         const logDiv = document.getElementById('log');
 
@@ -80,11 +80,12 @@
         ws.onopen = () => log("Connected to LCL Core");
         ws.onmessage = (event) => {
             try {
-                const msg = JSON.parse(event.data);
+                const rawMsg = JSON.parse(event.data);
+                const msg = normalizeIncomingMessage(rawMsg);
                 if (msg.type === "STATE") {
                     backendEntities = msg.data.entities;
                 }
-                else if (msg.type === "LOGENESIS_RESPONSE") {
+                else if (msg.type === "LOGENESIS_RESPONSE" || msg.type === "manifestation") {
                     handleLogenesisResponse(msg);
                 }
                 else {
@@ -96,6 +97,22 @@
             }
         };
         ws.onclose = () => log("Disconnected from Server");
+
+        function normalizeIncomingMessage(msg) {
+            if (msg.type === "manifestation" && msg.manifestation) {
+                return {
+                    ...msg,
+                    text_content: typeof msg.manifestation.content === "string" ? msg.manifestation.content : msg.text_content,
+                    visual_qualia: {
+                        color: msg.manifestation.color,
+                        resonance: msg.manifestation.resonance,
+                        form: msg.manifestation.form,
+                        turbulence: 0.1
+                    }
+                };
+            }
+            return msg;
+        }
 
         function handleLogenesisResponse(msg) {
             if (msg.text_content) log("LOGENESIS: " + msg.text_content);
@@ -157,11 +174,7 @@
         function sendVoice() {
             const text = voiceIn.value;
             if(!text) return;
-            const payload = {
-                mode: modeSel.value,
-                input: { type: "voice", text: text }
-            };
-            ws.send(JSON.stringify(payload));
+            ws.send(JSON.stringify({ text }));
             voiceIn.value = "";
         }
 

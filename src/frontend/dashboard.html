@@ -694,7 +694,7 @@
 
                 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                 const host = window.location.host || 'localhost:8000';
-                const wsUrl = window.location.host ? `${protocol}//${host}/ws` : 'ws://localhost:8000/ws';
+                const wsUrl = window.location.host ? `${protocol}//${host}/ws/v3/stream` : 'ws://localhost:8000/ws/v3/stream';
 
                 console.log(`NET: Connecting to ${wsUrl}...`);
                 this.ws = new WebSocket(wsUrl);
@@ -751,7 +751,24 @@
                 }, delay);
             }
 
-            handleMessage(msg) {
+            normalizeIncomingMessage(msg) {
+                if (msg.type === "manifestation" && msg.manifestation) {
+                    const manifestation = msg.manifestation;
+                    return {
+                        ...msg,
+                        text_content: typeof manifestation.content === "string" ? manifestation.content : msg.text_content,
+                        visual_qualia: {
+                            color: manifestation.color,
+                            resonance: manifestation.resonance,
+                            form: manifestation.form
+                        }
+                    };
+                }
+                return msg;
+            }
+
+            handleMessage(rawMsg) {
+                const msg = this.normalizeIncomingMessage(rawMsg);
                 // Default impl, overridden by AetheriumGenesisCore setup
                 const lightParams = LightIntentMapper.map(msg);
                 this.lightField.updateFromIntent(lightParams);
@@ -760,11 +777,7 @@
 
             send(text) {
                 if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
-                const payload = {
-                    mode: "logenesis",
-                    input: { text: text, session_id: "logenesis_web" }
-                };
-                this.ws.send(JSON.stringify(payload));
+                this.ws.send(JSON.stringify({ text }));
             }
 
             toggleListening() {
@@ -1233,7 +1246,8 @@
 
             // 4. Override Message Handling for Enterprise Features
             const oldHandleMessage = system.handleMessage;
-            system.handleMessage = function(msg) {
+            system.handleMessage = function(rawMsg) {
+                const msg = this.normalizeIncomingMessage(rawMsg);
                 // Check if message is department specific
                 let department = null;
                 if (msg.intent_debug && msg.intent_debug.source_department) {
