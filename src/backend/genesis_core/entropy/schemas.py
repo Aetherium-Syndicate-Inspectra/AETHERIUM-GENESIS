@@ -12,6 +12,12 @@ class MeterState(str, Enum):
     CHAOTIC_GENIUS = "chaotic_genius"
 
 
+class QoUBand(str, Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
 class UserContext(BaseModel):
     current_screen: str
     previous_actions: List[str] = Field(default_factory=list)
@@ -72,3 +78,37 @@ class EntropySubmitResponse(BaseModel):
     ledger_entry_id: UUID
     artifact_ref: Optional[str] = None
     hash_chain_head: str
+
+
+class EntropyLedgerEntryView(BaseModel):
+    id: UUID
+    user_id: UUID
+    qou_score: float
+    qou_band: QoUBand
+    reward_amount: int
+    artifact_ref: Optional[str]
+    created_at: datetime
+    hash_prev: str
+    hash_self: str
+
+
+class HashChainIssue(BaseModel):
+    entry_id: UUID
+    issue: str
+
+
+class HashChainContinuityReport(BaseModel):
+    checked_entries: int
+    contiguous: bool
+    issues: List[HashChainIssue] = Field(default_factory=list)
+
+
+class EntropyLedgerExploreResponse(BaseModel):
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    qou_bands: List[QoUBand] = Field(default_factory=list)
+    user_id: Optional[UUID] = None
+    total_entries: int
+    hash_chain_head: str
+    continuity: HashChainContinuityReport
+    entries: List[EntropyLedgerEntryView]
