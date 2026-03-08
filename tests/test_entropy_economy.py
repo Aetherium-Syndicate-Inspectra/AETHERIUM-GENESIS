@@ -61,3 +61,21 @@ def test_entropy_submit_returns_preserve_artifact_on_high_qou():
     assert body["assessment"]["meter_state"] == "chaotic_genius"
     assert body["assessment"]["preserve"] is True
     assert body["artifact_ref"].startswith("akashic://entropy/")
+
+
+def test_entropy_replay_studio_explains_low_qou_session():
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/entropy/replay",
+            json={
+                "packet": _packet(0.95, action_type="keyboard_smash", preview="!!!!!!!!"),
+            },
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["assessment"]["qou_score"] == 0.0
+    assert body["explanation"]["quality_band"] == "low"
+    assert body["explanation"]["drivers"]
+    assert any(event["label"] == "Assess QoU" for event in body["timeline"])
+    assert len(body["documents"]) >= 4

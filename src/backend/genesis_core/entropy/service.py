@@ -75,3 +75,109 @@ class EntropyValidator:
         if any(keyword in preview for keyword in harmful_keywords):
             return 0.0
         return 1.0
+
+
+class EntropyReplayStudio:
+    """Creates replay artifacts to explain why QoU scored high or low."""
+
+    def __init__(self, validator: EntropyValidator):
+        self.validator = validator
+
+    def replay(self, packet: EntropyPacket):
+        from src.backend.genesis_core.entropy.schemas import (
+            ReplayDocument,
+            ReplayExplanation,
+            ReplayTimelineEvent,
+        )
+
+        assessment = self.validator.assess(packet)
+        quality_band = self._quality_band(assessment.qou_score)
+
+        drivers = [
+            f"Surprise factor {assessment.surprise_factor:.2f} from confidence {packet.prediction_snapshot.confidence_score:.2f}",
+            f"Semantic weight {assessment.semantic_weight:.2f}",
+            f"Safety weight {assessment.safety_weight:.2f}",
+        ]
+        if assessment.anti_gaming_flag:
+            drivers.append(f"Anti-gaming triggered: {assessment.anti_gaming_flag}")
+
+        risks = []
+        if assessment.semantic_weight <= 0.2:
+            risks.append("Input resembled low-information or noisy behavior")
+        if assessment.safety_weight == 0.0:
+            risks.append("Harmful keywords forced safety weight to zero")
+        if assessment.surprise_factor < 0.2:
+            risks.append("Low novelty due to high model confidence")
+
+        explanation = ReplayExplanation(
+            quality_band=quality_band,
+            verdict=self._verdict(assessment),
+            drivers=drivers,
+            risks=risks,
+        )
+
+        documents = [
+            ReplayDocument(
+                document_id="packet-context",
+                title="User Context Snapshot",
+                summary=(
+                    f"Screen {packet.user_context.current_screen}; "
+                    f"previous actions: {', '.join(packet.user_context.previous_actions) or 'none'}"
+                ),
+            ),
+            ReplayDocument(
+                document_id="prediction-snapshot",
+                title="Prediction Baseline",
+                summary=(
+                    f"Model {packet.prediction_snapshot.model_version} predicted "
+                    f"'{packet.prediction_snapshot.predicted_action}' with "
+                    f"confidence {packet.prediction_snapshot.confidence_score:.2f}"
+                ),
+            ),
+            ReplayDocument(
+                document_id="action-evidence",
+                title="Observed Action",
+                summary=(
+                    f"Action type {packet.actual_action.type} via {packet.actual_action.input_method}; "
+                    f"preview: {(packet.actual_action.content_preview or 'n/a')[:80]}"
+                ),
+            ),
+            ReplayDocument(
+                document_id="score-breakdown",
+                title="QoU Breakdown",
+                summary=(
+                    f"QoU {assessment.qou_score:.2f} = surprise {assessment.surprise_factor:.2f} × "
+                    f"semantic {assessment.semantic_weight:.2f} × safety {assessment.safety_weight:.2f}"
+                ),
+            ),
+        ]
+
+        timeline = [
+            ReplayTimelineEvent(order=1, label="Predict", detail=documents[1].summary),
+            ReplayTimelineEvent(order=2, label="Observe", detail=documents[2].summary),
+            ReplayTimelineEvent(order=3, label="Validate", detail=(
+                "Semantic and safety validators computed component weights"
+            )),
+            ReplayTimelineEvent(order=4, label="Assess QoU", detail=documents[3].summary),
+            ReplayTimelineEvent(order=5, label="Classify", detail=(
+                f"Meter state '{assessment.meter_state.value}' with reward {assessment.reward_amount}"
+            )),
+        ]
+
+        return assessment, documents, timeline, explanation
+
+    @staticmethod
+    def _quality_band(score: float) -> str:
+        if score >= 0.8:
+            return "high"
+        if score >= 0.3:
+            return "medium"
+        return "low"
+
+    @staticmethod
+    def _verdict(assessment: EntropyAssessment) -> str:
+        if assessment.qou_score >= 0.8:
+            return "Session shows high exploratory value with usable semantic signal."
+        if assessment.qou_score >= 0.3:
+            return "Session has mixed novelty and utility; improvements are possible."
+        return "Session scored low due to weak novelty, semantic signal, or safety penalties."

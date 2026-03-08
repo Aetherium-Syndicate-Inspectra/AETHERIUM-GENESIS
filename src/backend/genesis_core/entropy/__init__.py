@@ -6,7 +6,7 @@ from src.backend.genesis_core.entropy.schemas import (
     EntropySubmitResponse,
     MeterState,
 )
-from src.backend.genesis_core.entropy.service import EntropyPolicy, EntropyValidator
+from src.backend.genesis_core.entropy.service import EntropyPolicy, EntropyReplayStudio, EntropyValidator
 
 __all__ = [
     "AkashicTreasury",
@@ -18,4 +18,5 @@ __all__ = [
     "MeterState",
     "EntropyPolicy",
     "EntropyValidator",
+    "EntropyReplayStudio",
 ]
