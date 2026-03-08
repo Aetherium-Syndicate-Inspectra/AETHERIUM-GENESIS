@@ -1255,7 +1255,19 @@
                     this.voiceModule.speak(msg.text_content);
                 }
 
-                if (department && window.genesisCore) {
+                const unsafeDeptKeys = ["__proto__", "constructor", "prototype"];
+                if (
+                    department &&
+                    typeof department === "string" &&
+                    !unsafeDeptKeys.includes(department) &&
+                    window.genesisCore &&
+                    window.genesisCore.departmentManager &&
+                    window.genesisCore.departmentManager.departments &&
+                    Object.prototype.hasOwnProperty.call(
+                        window.genesisCore.departmentManager.departments,
+                        department
+                    )
+                ) {
                     window.genesisCore.departmentManager.departments[department].lastActivity = Date.now();
                 }
             };
