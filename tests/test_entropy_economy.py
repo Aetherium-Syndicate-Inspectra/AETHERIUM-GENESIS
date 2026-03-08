@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
@@ -63,19 +64,74 @@ def test_entropy_submit_returns_preserve_artifact_on_high_qou():
     assert body["artifact_ref"].startswith("akashic://entropy/")
 
 
-def test_entropy_replay_studio_explains_low_qou_session():
+def test_ledger_explorer_filters_by_time_and_bands_and_reports_continuity():
     with TestClient(app) as client:
-        response = client.post(
-            "/api/v1/entropy/replay",
+        low_user = str(uuid4())
+        medium_user = str(uuid4())
+        high_user = str(uuid4())
+
+        low_res = client.post(
+            "/api/v1/entropy/submit",
             json={
-                "packet": _packet(0.95, action_type="keyboard_smash", preview="!!!!!!!!"),
+                "user_id": low_user,
+                "packet": _packet(0.95, preview="quiet"),
+            },
+        )
+        medium_res = client.post(
+            "/api/v1/entropy/submit",
+            json={
+                "user_id": medium_user,
+                "packet": _packet(0.5, preview="signal"),
+            },
+        )
+        high_res = client.post(
+            "/api/v1/entropy/submit",
+            json={
+                "user_id": high_user,
+                "packet": _packet(0.02, preview="abcdefghijklmnopqrstuvwxyz"),
+            },
+        )
+
+        assert low_res.status_code == 200
+        assert medium_res.status_code == 200
+        assert high_res.status_code == 200
+
+        entries = app.state.akashic_treasury.entries
+        now = datetime.utcnow()
+        entries[0].created_at = now - timedelta(minutes=30)
+        entries[1].created_at = now - timedelta(minutes=10)
+        entries[2].created_at = now
+
+        start = (now - timedelta(minutes=20)).isoformat()
+        end = (now + timedelta(minutes=1)).isoformat()
+
+        response = client.get(
+            "/api/v1/entropy/ledger/explorer",
+            params={
+                "start_time": start,
+                "end_time": end,
+                "qou_bands": ["medium", "high"],
             },
         )
 
     assert response.status_code == 200
     body = response.json()
-    assert body["assessment"]["qou_score"] == 0.0
-    assert body["explanation"]["quality_band"] == "low"
-    assert body["explanation"]["drivers"]
-    assert any(event["label"] == "Assess QoU" for event in body["timeline"])
-    assert len(body["documents"]) >= 4
+    assert body["total_entries"] == 2
+    assert body["continuity"]["checked_entries"] == 2
+    assert body["continuity"]["contiguous"] is False
+    assert any(issue["issue"] == "hash_self_integrity_failure" for issue in body["continuity"]["issues"])
+    assert {entry["qou_band"] for entry in body["entries"]} == {"medium", "high"}
+
+
+def test_ledger_explorer_rejects_invalid_time_range():
+    with TestClient(app) as client:
+        response = client.get(
+            "/api/v1/entropy/ledger/explorer",
+            params={
+                "start_time": "2024-01-01T10:00:00Z",
+                "end_time": "2024-01-01T09:00:00Z",
+            },
+        )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "start_time must be <= end_time"
