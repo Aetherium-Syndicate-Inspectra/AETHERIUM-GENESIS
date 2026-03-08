@@ -72,3 +72,33 @@ class EntropySubmitResponse(BaseModel):
     ledger_entry_id: UUID
     artifact_ref: Optional[str] = None
     hash_chain_head: str
+
+
+class ReplayDocument(BaseModel):
+    document_id: str
+    title: str
+    summary: str
+
+
+class ReplayTimelineEvent(BaseModel):
+    order: int = Field(ge=1)
+    label: str
+    detail: str
+
+
+class ReplayExplanation(BaseModel):
+    quality_band: str
+    verdict: str
+    drivers: List[str] = Field(default_factory=list)
+    risks: List[str] = Field(default_factory=list)
+
+
+class EntropyReplayRequest(BaseModel):
+    packet: EntropyPacket
+
+
+class EntropyReplayResponse(BaseModel):
+    assessment: EntropyAssessment
+    documents: List[ReplayDocument]
+    timeline: List[ReplayTimelineEvent]
+    explanation: ReplayExplanation

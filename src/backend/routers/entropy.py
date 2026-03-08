@@ -1,7 +1,12 @@
 import hashlib
 from fastapi import APIRouter, HTTPException, Request
 
-from src.backend.genesis_core.entropy.schemas import EntropySubmitRequest, EntropySubmitResponse
+from src.backend.genesis_core.entropy.schemas import (
+    EntropyReplayRequest,
+    EntropyReplayResponse,
+    EntropySubmitRequest,
+    EntropySubmitResponse,
+)
 
 router = APIRouter(prefix="/api/v1/entropy", tags=["entropy-economy"])
 
@@ -36,4 +41,19 @@ async def submit_entropy_packet(payload: EntropySubmitRequest, request: Request)
         ledger_entry_id=ledger_entry.id,
         artifact_ref=artifact_ref,
         hash_chain_head=treasury.hash_head,
+    )
+
+
+@router.post("/replay", response_model=EntropyReplayResponse)
+async def replay_entropy_packet(payload: EntropyReplayRequest, request: Request):
+    studio = getattr(request.app.state, "entropy_replay_studio", None)
+    if studio is None:
+        raise HTTPException(status_code=503, detail="Entropy replay studio is not initialized")
+
+    assessment, documents, timeline, explanation = studio.replay(payload.packet)
+    return EntropyReplayResponse(
+        assessment=assessment,
+        documents=documents,
+        timeline=timeline,
+        explanation=explanation,
     )

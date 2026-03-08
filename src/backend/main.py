@@ -35,7 +35,7 @@ from src.backend.routers.metrics import MetricCollector
 from src.backend.routers.entropy import router as entropy_router
 from src.backend.genesis_core.bus.extreme import AetherBusExtreme
 from src.backend.security.key_manager import KeyManager
-from src.backend.genesis_core.entropy import AkashicTreasury, EntropyValidator
+from src.backend.genesis_core.entropy import AkashicTreasury, EntropyReplayStudio, EntropyValidator
 
 from src.backend.departments.development.javana_core.reflex_kernel import JavanaKernel
 from src.backend.departments.development.javana_core.responses import REFLEX_PARAMS
@@ -143,6 +143,7 @@ async def startup_event():
     # Initialize Security & Metrics
     app.state.key_manager = KeyManager()
     app.state.entropy_validator = EntropyValidator()
+    app.state.entropy_replay_studio = EntropyReplayStudio(app.state.entropy_validator)
     app.state.akashic_treasury = AkashicTreasury()
 
     metric_collector = MetricCollector.get_instance()
