@@ -1245,7 +1245,6 @@
             });
 
             // 4. Override Message Handling for Enterprise Features
-            const oldHandleMessage = system.handleMessage;
             system.handleMessage = function(rawMsg) {
                 const msg = this.normalizeIncomingMessage(rawMsg);
                 // Check if message is department specific

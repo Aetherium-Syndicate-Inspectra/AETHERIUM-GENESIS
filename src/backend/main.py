@@ -120,7 +120,7 @@ async def startup_event():
     # Awakening: Start the Bio-Digital Organism
     await engine.startup()
 
-    # Initialize AetherBusExtreme (V2 Protocol)
+    # Initialize AetherBusExtreme (Unified V3 Stream Backbone)
     # We attach it to app.state for the API Router to use
     aether_bus = AetherBusExtreme()
     await aether_bus.connect()

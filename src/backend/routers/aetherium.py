@@ -1,13 +1,12 @@
-from fastapi import APIRouter, WebSocket, Request, WebSocketDisconnect, HTTPException, Body
-from typing import Dict, Any, Optional
+from fastapi import APIRouter, WebSocket, Request, WebSocketDisconnect, HTTPException
+from typing import Dict, Any
 import uuid
 import json
 import logging
 import asyncio
-from datetime import datetime
 
 from src.backend.genesis_core.protocol.schemas import (
-    AetherEvent, AetherEventType, StateData, IntentData, IntentVector
+    AetherEvent, AetherEventType, StateData
 )
 from src.backend.genesis_core.models.intent import SystemIntent, IntentPayload, IntentContext
 from src.backend.genesis_core.protocol.abe_contract import ABEContract

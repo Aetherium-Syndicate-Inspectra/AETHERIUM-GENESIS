@@ -366,8 +366,6 @@ function stopListening(){
   // Send recognized text if available
   if(finalTranscript && finalTranscript.length > 0) {
       sendWS({ text: finalTranscript });
-  } else {
-      // Fallback or just signal end
   }
 }
 
