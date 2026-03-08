@@ -41,6 +41,84 @@
 - **Akashic Records**: บันทึกความจำถาวรแบบ Immutable Ledger (data/akashic_records.json)
 - **PWA (Progressive Web App)**: รองรับการติดตั้งและใช้งานเสมือนแอปพื้นฐานบนมือถือและเดสก์ท็อป
 
+### 🗄️ System Architecture Diagram (Database-Centric)
+
+โครงสร้างด้านล่างสะท้อน schema หลักของระบบ Entropy Economy โดยเชื่อมความสัมพันธ์จาก payload ที่รับเข้ามา ไปยังการประเมิน และลงท้ายที่ ledger สำหรับบันทึกธุรกรรมแบบ hash-chain
+
+```mermaid
+erDiagram
+    USER ||--o{ ENTROPY_PACKET : submits
+    ENTROPY_PACKET ||--|| USER_CONTEXT : has
+    ENTROPY_PACKET ||--|| PREDICTION_SNAPSHOT : has
+    ENTROPY_PACKET ||--|| ACTUAL_ACTION : has
+    ACTUAL_ACTION ||--|| MICRO_METRICS : has
+    ENTROPY_PACKET ||--o| ENTROPY_ASSESSMENT : produces
+    USER ||--o{ ENTROPY_LEDGER : owns
+    ENTROPY_ASSESSMENT ||--|| ENTROPY_LEDGER : recorded_as
+    ENTROPY_LEDGER ||--o| ENTROPY_LEDGER : hash_prev
+
+    USER {
+      uuid user_id PK
+    }
+
+    ENTROPY_PACKET {
+      uuid packet_id PK
+      datetime timestamp
+      uuid user_id FK
+    }
+
+    USER_CONTEXT {
+      string current_screen
+      string[] previous_actions
+    }
+
+    PREDICTION_SNAPSHOT {
+      string model_version
+      string predicted_action
+      float confidence_score
+    }
+
+    ACTUAL_ACTION {
+      string type
+      string content_hash
+      string input_method
+      string content_preview
+    }
+
+    MICRO_METRICS {
+      float typing_variance
+      int hesitation_pauses
+      float mouse_jitter
+      float voice_tone_variance
+    }
+
+    ENTROPY_ASSESSMENT {
+      uuid packet_id PK,FK
+      float qou_score
+      float semantic_weight
+      float safety_weight
+      float surprise_factor
+      int reward_amount
+      string meter_state
+      bool preserve
+      bool trigger_model_update
+      string anti_gaming_flag
+    }
+
+    ENTROPY_LEDGER {
+      uuid id PK
+      uuid user_id FK
+      float qou_score
+      int reward_amount
+      string artifact_ref
+      datetime created_at
+      string hash_prev
+      string hash_self
+    }
+```
+
+**English note:** The diagram maps API packet entities (`EntropyPacket`, nested context/action blocks), evaluation output (`EntropyAssessment`), and immutable treasury persistence (`EntropyLedger`) into one end-to-end database view.
+
 ---
 
 ## 🚀 การเริ่มต้นระบบ (System Awakening)
@@ -84,10 +162,21 @@ pytest -q tests/test_region_extractor.py
 
 > หมายเหตุ: ชุดทดสอบทั้งระบบ (`pytest -q`) อาจล้มเหลวในบาง environment ที่ยังไม่ได้ติดตั้ง dependency เฉพาะทาง (เช่น torch) หรือมี import path ของโมดูล legacy ที่ยังไม่ถูกย้ายครบ
 
-### 4. แนวทางต่อยอดเชิงสร้างสรรค์ (Creative Extension Ideas)
-- เพิ่ม `pre-commit` pipeline (ruff + pytest subset + docs lint) เพื่อจับ regression ตั้งแต่ก่อน commit
-- สร้าง “Challenge Mode” โดยสุ่มเหตุการณ์ผิดปกติ (fault injection) ให้ Resonators ฝึกการตัดสินใจภายใต้ความไม่แน่นอน
-- เพิ่ม benchmark แบบ scenario-based เพื่อวัดทั้ง latency, stability และ quality score ในรอบเดียว
+### 4. แนวทางต่อยอดเชิงสร้างสรรค์ / New Feature Proposals
+
+> ลบรายการ “ข้อเสนอแนะที่ทำเสร็จแล้ว / Completed Suggestions” ออกจากเอกสารแล้ว เพื่อคงเฉพาะงานที่ยังควรผลักดันต่อ
+
+#### 🇹🇭 ข้อเสนอใหม่ (Thai)
+- เพิ่ม **Entropy Replay Studio** สำหรับ replay packet + assessment แบบ time-travel debugging เพื่อวิเคราะห์เหตุผลที่ QoU สูง/ต่ำในแต่ละรอบ
+- สร้าง **Policy Simulator Sandbox** ให้ทีม Governance ปรับค่าถ่วงน้ำหนัก (`semantic_weight`, `safety_weight`) แล้วดูผลกระทบต่อ reward distribution ก่อน deploy จริง
+- เพิ่ม **Resonator Reliability Scorecard** สำหรับติดตามความเสถียรของแต่ละ resonator (latency, correction rate, safety override) เป็นรายวัน/รายสัปดาห์
+- เพิ่ม **Ledger Explorer API** พร้อม query ตามช่วงเวลา, ช่วงคะแนน QoU, และ hash-chain continuity check เพื่อรองรับ audit ภายใน
+
+#### 🇬🇧 New proposals (English)
+- Build an **Entropy Replay Studio** to replay packet + assessment timelines and explain why a session scored high or low QoU.
+- Introduce a **Policy Simulator Sandbox** so Governance can tune (`semantic_weight`, `safety_weight`) and preview reward-impact before production rollout.
+- Add a **Resonator Reliability Scorecard** to monitor per-resonator health (latency, correction rate, safety override frequency) over daily/weekly windows.
+- Provide a **Ledger Explorer API** with time-range filters, QoU bands, and hash-chain continuity checks for internal audit workflows.
 
 ---
 
