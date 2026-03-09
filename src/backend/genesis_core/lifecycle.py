@@ -6,9 +6,11 @@ from typing import Dict, Any, Optional
 
 from src.backend.genesis_core.bus.factory import BusFactory
 from src.backend.genesis_core.agents.validator import ValidatorAgent
+from src.backend.genesis_core.governance.core import GovernanceCore
 from src.backend.genesis_core.agents.agio_sage import AgioSage
 from src.backend.genesis_core.models.intent import SystemIntent, IntentPayload, IntentContext
 from src.backend.genesis_core.protocol.schemas import AetherEvent, AetherEventType
+from src.backend.genesis_core.memory.akashic import AkashicRecords
 
 logger = logging.getLogger("LifecycleManager")
 
@@ -20,7 +22,8 @@ class LifecycleManager:
     """
     def __init__(self):
         self.bus = BusFactory.get_bus()
-        self.validator = ValidatorAgent()
+        self.ledger = AkashicRecords()
+        self.validator = ValidatorAgent(governance=GovernanceCore(ledger=self.ledger))
         self.agio_sage = AgioSage()
 
         self.running = False
