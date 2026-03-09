@@ -144,6 +144,7 @@ class MemoryProjectionManager:
     """
     def __init__(self, ledger: AkashicRecords):
         self.ledger = ledger
+        self.gem_store_path = "data/derived_gems.json"
 
     def get_episodic_view(self, limit: int = 50) -> List[Dict]:
         records = self.ledger.get_records(limit=limit)
@@ -175,6 +176,57 @@ class MemoryProjectionManager:
 
         summary["recent_intents"] = list(set(summary["recent_intents"]))[-10:]
         return summary
+
+    def _ensure_gem_store(self):
+        directory = os.path.dirname(self.gem_store_path)
+        if directory and not os.path.exists(directory):
+            os.makedirs(directory, exist_ok=True)
+        if not os.path.exists(self.gem_store_path):
+            with open(self.gem_store_path, "w") as f:
+                json.dump({"gems": {}}, f, indent=2)
+
+    def record_gem_state_change(
+        self,
+        gem: Any,
+        actor: str,
+        source_episode: str,
+        event_type: str,
+        extra: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        self._ensure_gem_store()
+        gem_data = gem.model_dump(mode="json") if hasattr(gem, "model_dump") else dict(gem)
+        provenance = {
+            "event_type": event_type,
+            "adopted_by": actor,
+            "adopted_at": time.time(),
+            "source_episode": source_episode,
+        }
+        if extra:
+            provenance.update(extra)
+
+        ledger_hash = self.ledger.append_record(
+            payload={"type": event_type, "gem": gem_data, "provenance": provenance},
+            actor=actor,
+            intent_id=gem_data.get("gem_id"),
+            causal_link=source_episode,
+        )
+
+        with open(self.gem_store_path, "r+") as f:
+            data = json.load(f)
+            gems = data.setdefault("gems", {})
+            entry = gems.setdefault(gem_data["gem_id"], {"history": []})
+            entry["current"] = gem_data
+            entry["history"].append({"provenance": provenance, "ledger_hash": ledger_hash})
+            f.seek(0)
+            json.dump(data, f, indent=2)
+            f.truncate()
+
+        return ledger_hash
+
+    def get_gem_projection(self) -> Dict[str, Any]:
+        self._ensure_gem_store()
+        with open(self.gem_store_path, "r") as f:
+            return json.load(f)
 
 class GitMemorySystem:
     def __init__(self, repo_path: str = "."):

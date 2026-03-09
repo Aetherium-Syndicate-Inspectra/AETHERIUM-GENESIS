@@ -270,6 +270,7 @@
         </section>
     </main>
 
+    <script type="module" src="/public/dashboard/main.js"></script>
     <script>
         class NeuralChat {
             constructor() {
@@ -321,76 +322,8 @@
                 if (msg.text_content) {
                     this.appendMessage('ai', msg.text_content);
                 }
-                // Handle complex events
-                if (msg.type === "APPROVAL_REQUIRED") {
-                    governanceManager.fetchApprovals();
-                }
-            }
-        }
-
-        class GovernanceManager {
-            constructor() {
-                this.inbox = document.getElementById('approval-inbox');
-                this.preview = document.getElementById('action-preview');
-                this.poll();
-            }
-
-            async poll() {
-                setInterval(() => this.fetchApprovals(), 5000);
-                this.fetchApprovals();
-            }
-
-            async fetchApprovals() {
-                try {
-                    const res = await fetch('/governance/approvals');
-                    const data = await res.json();
-                    this.renderApprovals(data);
-                } catch (e) { console.error("Gov Link Failed", e); }
-            }
-
-            renderApprovals(approvals) {
-                document.getElementById('pending-count').textContent = `${approvals.length} PENDING`;
-                if (approvals.length === 0) {
-                    this.inbox.innerHTML = '<div style="text-align: center; opacity: 0.5; margin-top: 2rem;">No pending approvals.</div>';
-                    return;
-                }
-
-                this.inbox.innerHTML = approvals.map(app => `
-                    <div class="approval-item">
-                        <span class="tier-tag tier-${app.tier}">Tier ${app.tier}</span>
-                        <div style="font-weight: bold; margin-bottom: 0.5rem;">${app.action_type}</div>
-                        <div style="font-size: 0.8rem; opacity: 0.7;">Actor: ${app.actor}</div>
-                        <div class="approval-actions">
-                            <button class="btn-approve" onclick="governanceManager.decide('${app.request_id}', 'APPROVED')">APPROVE</button>
-                            <button class="btn-reject" onclick="governanceManager.decide('${app.request_id}', 'REJECTED')">REJECT</button>
-                            <button class="btn-view" onclick="governanceManager.view('${app.request_id}')">VIEW</button>
-                        </div>
-                    </div>
-                `).join('');
-            }
-
-            async decide(id, decision) {
-                await fetch('/governance/decide', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ request_id: id, decision: decision })
-                });
-                this.fetchApprovals();
-                this.preview.innerHTML = '<div style="opacity: 0.5;">Action processed.</div>';
-            }
-
-            async view(id) {
-                const res = await fetch('/governance/approvals');
-                const approvals = await res.json();
-                const app = approvals.find(a => a.request_id === id);
-                if (app) {
-                    this.preview.innerHTML = `
-                        <div style="color: var(--accent-cyan); margin-bottom: 1rem;">>>> PREVIEW: ${app.action_type}</div>
-                        <div>Intent ID: ${app.intent_id}</div>
-                        <div class="diff-view">
-                            ${JSON.stringify(app.preview_data, null, 2)}
-                        </div>
-                    `;
+                if (msg.type === "APPROVAL_REQUIRED" && window.governanceManager) {
+                    window.governanceManager.fetchApprovals();
                 }
             }
         }
@@ -431,7 +364,6 @@
         init(); draw();
 
         const neuralChat = new NeuralChat();
-        const governanceManager = new GovernanceManager();
     </script>
 </body>
 </html>
