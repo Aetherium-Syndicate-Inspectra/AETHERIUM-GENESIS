@@ -121,6 +121,31 @@ erDiagram
 
 ---
 
+
+## 🧭 Governance Runtime + Memory Fabric (Engineering Layer)
+
+เพื่อยกระดับจากแนวคิดเชิงวิสัยทัศน์ไปสู่ execution จริง ระบบได้เพิ่ม subsystem แบบ first-class ดังนี้:
+
+- **Governance Core Runtime** (`src/backend/governance/`)
+  - Action tiering ระดับ **Tier 0–3**
+  - **Policy-as-code** ผ่าน `policy_engine.py`
+  - **Approval routing** ผ่าน `approval_router.py`
+  - รองรับ recommendation: **quarantine / suspend / rollback**
+- **Execution Vessel Layer** (`src/backend/vessels/`)
+  - `WorkspaceVessel`, `DriveVessel`, `DatabaseVessel`, `SlackVessel`
+  - แนวคิดการทำงาน: **LLM วางแผน → Vessel ลงมือทำ → Governance อนุมัติ → Akashic บันทึก**
+- **Akashic Memory Fabric** (`src/backend/memory/fabric.py`)
+  - ใช้ `data/akashic_records.json` เป็น canonical event stream
+  - แตก projection เป็น:
+    - `data/memory/episodes/`
+    - `data/memory/semantic/`
+    - `data/memory/procedures/`
+    - `data/memory/gems/`
+    - `data/memory/identity/`
+- **Reflector + Gems of Wisdom**
+  - `src/backend/agents/reflector.py`
+  - `src/backend/gems/repository.py`, `src/backend/gems/lifecycle.py`
+
 ## 🚀 การเริ่มต้นระบบ (System Awakening)
 
 ### 1. การเตรียมสภาพแวดล้อม
