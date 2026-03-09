@@ -31,6 +31,20 @@ class TestAkashicEnhanced(unittest.TestCase):
         self.assertEqual(records[0]['provenance']['causal_link'], causal_link)
         self.assertEqual(records[0]['payload'], payload)
 
+
+    def test_verify_hash_chain_detects_prev_hash_tampering(self):
+        self.records.append_record({"type": "msg", "text": "first"}, actor="User")
+        self.records.append_record({"type": "msg", "text": "second"}, actor="User")
+
+        with open(self.db_path, 'r+', encoding='utf-8') as f:
+            data = json.load(f)
+            data["chain"][1]["prev_hash"] = "f" * 64
+            f.seek(0)
+            json.dump(data, f, indent=2)
+            f.truncate()
+
+        self.assertFalse(self.records.verify_hash_chain())
+
     def test_projection_episodic(self):
         self.records.append_record({"type": "msg", "text": "hello"}, actor="User")
         self.records.append_record({"type": "thought", "text": "reflecting"}, actor="AgioSage")

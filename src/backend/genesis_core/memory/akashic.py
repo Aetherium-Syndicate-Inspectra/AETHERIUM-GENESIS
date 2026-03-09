@@ -96,6 +96,9 @@ class AkashicRecords:
                 content = f"{timestamp}{json.dumps(envelope, sort_keys=True)}{ph}".encode()
                 curr_hash = hashlib.sha256(content).hexdigest()
 
+                if ph != prev_hash:
+                    return False
+
                 if curr_hash != block['hash']:
                     return False
 
