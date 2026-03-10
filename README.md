@@ -208,23 +208,27 @@ pytest -q tests/test_region_extractor.py
 
 > หมายเหตุ: ชุดทดสอบทั้งระบบ (`pytest -q`) อาจล้มเหลวในบาง environment ที่ยังไม่ได้ติดตั้ง dependency เฉพาะทาง (เช่น torch) หรือมี import path ของโมดูล legacy ที่ยังไม่ถูกย้ายครบ
 
-### 4. แนวทางต่อยอดเชิงสร้างสรรค์ / New Feature Proposals
+### 4. Future Roadmap / แผนต่อยอดในอนาคต
 
-#### 🇹🇭 ข้อเสนอใหม่ (Thai)
-- เพิ่ม **Entropy Replay Studio** สำหรับ replay packet + assessment แบบ time-travel debugging เพื่อวิเคราะห์เหตุผลที่ QoU สูง/ต่ำในแต่ละรอบ
-- สร้าง **Policy Simulator Sandbox** ให้ทีม Governance ปรับค่าถ่วงน้ำหนัก (`semantic_weight`, `safety_weight`) แล้วดูผลกระทบต่อ reward distribution ก่อน deploy จริง
-- เพิ่ม **Resonator Reliability Scorecard** สำหรับติดตามความเสถียรของแต่ละ resonator (latency, correction rate, safety override) เป็นรายวัน/รายสัปดาห์
-- เพิ่ม **Ledger Explorer API** พร้อม query ตามช่วงเวลา, ช่วงคะแนน QoU, และ hash-chain continuity check เพื่อรองรับ audit ภายใน
-- เพิ่ม **Adaptive Reward Guardrails** เพื่อกำหนดเพดาน/พื้น reward แบบไดนามิกตามพฤติกรรมความเสี่ยง และลดโอกาสถูกเกมระบบ
-- เพิ่ม **Cross-Session Intent Graph** สำหรับเชื่อมโยง sequence ของ packet ข้าม session เพื่อค้นหา pattern เชิงเจตนาและ anomaly ที่ยาวหลายวัน
+#### 🇹🇭 โร้ดแมปฟังก์ชันใหม่ (Thai)
+- **Scenario Presets**: ชุดสถานการณ์สำเร็จรูปสำหรับการทดสอบ intent/governance แบบซ้ำได้และวัดผลได้
+- **Plugin Renderer API**: API สำหรับเสียบ renderer เพิ่มเติม (2D/3D/immersive canvas) โดยไม่แตะแกนหลัก
+- **Session Replay**: ระบบ replay เหตุการณ์ทั้ง session พร้อม timeline annotation เพื่อวิเคราะห์การตัดสินใจย้อนหลัง
+- **Policy-Driven Link Analysis**: วิเคราะห์ความเชื่อมโยงของเหตุการณ์/เอกสารภายใต้นโยบายที่กำหนดได้ (risk-aware graph traversal)
+- **Hybrid Persistence**: ผสาน event ledger + indexed store เพื่อให้ทั้ง auditability และ query performance
+- **Collaboration Controls**: สิทธิ์การทำงานร่วมกันระดับทีม/บทบาท, approval chain, และ action visibility
+- **Voice Quality Dashboard**: แดชบอร์ดวัดคุณภาพเสียงเชิงประสบการณ์ (latency, clarity, interruption, recovery)
+- **Offline-First Runtime Packs**: ชุด runtime ที่ใช้งานแบบออฟไลน์ได้สำหรับ edge/dev environments พร้อมกลไก sync เมื่อออนไลน์
 
-#### 🇬🇧 New proposals (English)
-- Build an **Entropy Replay Studio** to replay packet + assessment timelines and explain why a session scored high or low QoU.
-- Introduce a **Policy Simulator Sandbox** so Governance can tune (`semantic_weight`, `safety_weight`) and preview reward-impact before production rollout.
-- Add a **Resonator Reliability Scorecard** to monitor per-resonator health (latency, correction rate, safety override frequency) over daily/weekly windows.
-- Provide a **Ledger Explorer API** with time-range filters, QoU bands, and hash-chain continuity checks for internal audit workflows.
-- Implement **Adaptive Reward Guardrails** to enforce dynamic reward ceilings/floors based on risk behavior and reduce gaming pressure.
-- Introduce a **Cross-Session Intent Graph** to correlate packet sequences across sessions and surface long-horizon intent/anomaly patterns.
+#### 🇬🇧 Future roadmap proposals (English)
+- **Scenario Presets** for repeatable intent/governance simulations with measurable outcomes.
+- **Plugin Renderer API** to plug in new render pipelines (2D/3D/immersive canvas) without changing core logic.
+- **Session Replay** with timeline annotations for post-session behavioral and decision analysis.
+- **Policy-Driven Link Analysis** for risk-aware relationship discovery across events and documents.
+- **Hybrid Persistence** combining immutable ledger flows with indexed stores for both auditability and fast querying.
+- **Collaboration Controls** including team/role permissions, approval chains, and action visibility boundaries.
+- **Voice Quality Dashboard** to track conversational quality metrics (latency, clarity, interruption, recovery).
+- **Offline-First Runtime Packs** for resilient edge/dev operation with deferred sync when connectivity returns.
 
 ---
 
