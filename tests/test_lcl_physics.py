@@ -4,6 +4,10 @@ from src.backend.departments.presentation.lcl import LightControlLogic
 from src.backend.genesis_core.models.light import LightIntent, LightAction, PriorityLevel, LightEntity
 
 def test_gatekeeper_rate_limit():
+    """Validate per-source request throttling.
+
+    Verifies that the third event within the configured one-second window is rejected.
+    """
     lcl = LightControlLogic()
     # Override for testing
     lcl.RATE_LIMIT = 2
@@ -17,6 +21,7 @@ def test_gatekeeper_rate_limit():
 
 
 def test_gatekeeper_priority():
+    """Ensure accepted priority tiers pass validation checks."""
     lcl = LightControlLogic()
     intent_low = LightIntent(action=LightAction.SPAWN, priority=PriorityLevel.AMBIENT, source="test")
     intent_high = LightIntent(action=LightAction.SPAWN, priority=PriorityLevel.USER, source="test")
@@ -26,6 +31,7 @@ def test_gatekeeper_priority():
 
 
 def test_metabolism_energy():
+    """Confirm energy deduction honors per-action costs."""
     lcl = LightControlLogic()
     lcl.system_energy = 1.0
 
@@ -39,6 +45,7 @@ def test_metabolism_energy():
 
 
 def test_physics_tick():
+    """Check friction and position integration during a simulation tick."""
     lcl = LightControlLogic()
     # Add an entity
     entity = LightEntity(id="e1", position=(0.5, 0.5), velocity=(0.1, 0.0), energy=1.0)
@@ -61,6 +68,7 @@ def test_physics_tick():
 
 
 def test_target_position_zero_vector():
+    """Preserve explicit zero-vector target coordinates for entities."""
     lcl = LightControlLogic()
     entity = LightEntity(
         id="e1",
@@ -77,6 +85,7 @@ def test_target_position_zero_vector():
 
 
 def test_process_spawn_move():
+    """Validate SPAWN then MOVE intent processing end-to-end."""
     lcl = LightControlLogic()
 
     # Spawn
