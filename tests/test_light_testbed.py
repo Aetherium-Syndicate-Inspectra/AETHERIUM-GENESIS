@@ -6,6 +6,7 @@ client = TestClient(app)
 
 
 def test_websocket_standard_spawn():
+    """Verify standard touch input emits SPAWN instruction payload."""
     with client.websocket_connect("/ws") as websocket:
         payload = {
             "mode": "std",
@@ -26,6 +27,7 @@ def test_websocket_standard_spawn():
 
 
 def test_websocket_standard_voice_move():
+    """Verify standard voice input emits MOVE instruction payload."""
     with client.websocket_connect("/ws") as websocket:
         payload = {
             "mode": "std",
@@ -44,6 +46,7 @@ def test_websocket_standard_voice_move():
 
 
 def test_websocket_ai_mock_move_right():
+    """Verify AI mode maps movement utterance to right-target move."""
     with client.websocket_connect("/ws") as websocket:
         payload = {
             "mode": "ai",
@@ -61,6 +64,7 @@ def test_websocket_ai_mock_move_right():
 
 
 def test_websocket_ai_mock_spawn():
+    """Verify AI mode maps spawn utterance to SPAWN instruction."""
     with client.websocket_connect("/ws") as websocket:
         payload = {
             "mode": "ai",

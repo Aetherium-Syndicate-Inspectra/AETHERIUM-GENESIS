@@ -9,6 +9,7 @@ if isinstance(torch, MagicMock) or (hasattr(torch, '__module__') and 'unittest.m
     pytest.skip("Torch is mocked, skipping region extractor tests", allow_module_level=True)
 
 def test_extract():
+    """Extract a bounded region and confirm expected tensor shape."""
     # If we get here, torch is likely real or a very sophisticated mock
     try:
         frame = torch.randn(3, 100, 100)
@@ -21,6 +22,7 @@ def test_extract():
     assert region.shape == (3, 10, 10)
 
 def test_merge():
+    """Merge an updated region and validate in/out-of-mask behavior."""
     try:
         frame = torch.zeros(3, 100, 100)
         updated = torch.ones(3, 10, 10)
@@ -48,6 +50,7 @@ def test_merge():
     assert result[:, 0:10, 0:10].sum() == 0
 
 def test_validate():
+    """Validate mask boundary checks for accepted and rejected ranges."""
     extractor = RegionExtractor((100, 100, 3))
     assert extractor.validate(SpatialMask(0, 0, 10, 10))
     assert not extractor.validate(SpatialMask(-1, 0, 10, 10))
@@ -60,6 +63,7 @@ def test_validate():
 
 
 def test_extract_raises_on_out_of_bounds_mask():
+    """Raise an error when extraction mask exceeds frame bounds."""
     try:
         frame = torch.randn(3, 100, 100)
     except Exception:

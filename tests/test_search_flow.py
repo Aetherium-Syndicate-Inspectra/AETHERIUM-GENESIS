@@ -15,6 +15,7 @@ from src.backend.genesis_core.models.light import LightIntent, LightAction
 
 class TestSearchFlow(unittest.TestCase):
     def test_intent_extraction(self):
+        """Validate intent routing between search and light commands."""
         ai = LightweightAI()
 
         # Test Search
@@ -31,6 +32,7 @@ class TestSearchFlow(unittest.TestCase):
 
     @patch('requests.get')
     def test_provider_and_synthesis(self, mock_get):
+        """Verify provider result handling and LCL synthesis output."""
         # Setup Mock
         mock_response = MagicMock()
         mock_response.json.return_value = {
