@@ -34,7 +34,7 @@ python -m uvicorn src.backend.main:app --reload --host 0.0.0.0 --port 8000
 ## 3. API & Connectivity
 สำหรับนักพัฒนาที่ต้องการเชื่อมต่อกับ "สมอง" (Cognitive Core) ของระบบโดยตรง
 
-*   **WebSocket Endpoint:** `ws://localhost:8000/ws`
+*   **WebSocket Endpoint:** `ws://localhost:8000/ws/v3/stream` (unified stream)
     *   ใช้สำหรับส่งข้อความ (Text) และรับสถานะ (State/Visuals) แบบ Real-time
 *   **Health Check Protocol:** ระบบมีการส่งข้อมูลสุขภาพ (Heartbeat) ผ่าน AetherBus ซึ่งสามารถดักจับได้ผ่าน WebSocket เดียวกัน
 

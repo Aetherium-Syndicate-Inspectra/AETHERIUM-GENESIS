@@ -43,12 +43,11 @@
     *   **Adapters:** รองรับการเชื่อมต่อกับ Gemini API (`gemini_adapter.py`) สำหรับความฉลาดขั้นสูง
 
 ### 3.3 Communication (The Nervous System)
-การสื่อสารระหว่าง Frontend และ Backend ใช้ **WebSocket** ที่ `ws://localhost:8000/ws` และ `ws://localhost:8000/ws/v3/stream`
+การสื่อสารระหว่าง Frontend และ Backend ใช้ **WebSocket** ที่ `ws://localhost:8000/ws/v3/stream` เพียงช่องทางเดียว
 *   **Client -> Server:** ส่ง JSON ที่มี `text` และ `intent_vector`
 *   **Server -> Client:**
-    *   `STATE`: ข้อมูลตำแหน่ง Particle และฟิสิกส์ (ส่งต่อเนื่อง 20Hz)
-    *   `LOGENESIS_RESPONSE`: ข้อความตอบกลับและค่าสี/อารมณ์ (`visual_qualia`)
-    *   `INSTRUCTION`: คำสั่งจัดรูปแบบขบวน (Formation) เช่น วงกลม, เส้นตรง
+    *   `handshake`, `intent_detected`, `state_update`, `manifestation`, `degradation` (Aetherium v3 stream events)
+    *   ฝั่ง UI ใช้ adapter แมป `manifestation` ไปเป็น `text_content` และ `visual_qualia` เพื่อความเข้ากันได้ย้อนหลัง
 
 ---
 

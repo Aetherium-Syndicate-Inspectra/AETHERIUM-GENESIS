@@ -79,7 +79,7 @@ python -m uvicorn src.backend.main:app --host 0.0.0.0 --port 8000
 pytest -q tests/test_auth_flow.py
 
 # รันทดสอบโมดูลสกัดพื้นที่ภาพ
-pytest -q tests/test_region_extractor.py
+pytest -q tests/test_aetherium_api.py
 ```
 
 > หมายเหตุ: ชุดทดสอบทั้งระบบ (`pytest -q`) อาจล้มเหลวในบาง environment ที่ยังไม่ได้ติดตั้ง dependency เฉพาะทาง (เช่น torch) หรือมี import path ของโมดูล legacy ที่ยังไม่ถูกย้ายครบ

@@ -36,7 +36,7 @@
 
 <script>
 /* Configuration */
-const WS_URL = 'ws://' + (window.location.host || 'localhost:8000') + '/ws/v3/stream';
+const WS_URL = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + (window.location.host || 'localhost:8000') + '/ws/v3/stream';
 const canvas = document.getElementById('scene');
 const ctx = canvas.getContext('2d', { alpha: true });
 let width = canvas.width = window.innerWidth;
