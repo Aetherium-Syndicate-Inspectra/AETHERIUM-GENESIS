@@ -1,9 +1,9 @@
 # VASA-1 Research Summary
 
 ## Citation
-Sicheng Xu\*, Guojun Chen\*, Yu-Xiao Guo\*, Jiaolong Yang\*‡, Chong Li, Zhenyu Zang, Yizhong Zhang, Xin Tong, Baining Guo  
-Microsoft Research Asia  
-\*Equal Contributions  
+Sicheng Xu\*, Guojun Chen\*, Yu-Xiao Guo\*, Jiaolong Yang\*‡, Chong Li, Zhenyu Zang, Yizhong Zhang, Xin Tong, Baining Guo
+Microsoft Research Asia
+\*Equal Contributions
 ‡Corresponding Author: jiaoyan@microsoft.com
 
 ## TL;DR
