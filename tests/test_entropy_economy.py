@@ -135,3 +135,42 @@ def test_ledger_explorer_rejects_invalid_time_range():
 
     assert response.status_code == 400
     assert response.json()["detail"] == "start_time must be <= end_time"
+
+
+def test_entropy_replay_returns_documents_timeline_and_explanation():
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/entropy/replay",
+            json={
+                "user_id": str(uuid4()),
+                "packet": _packet(0.02, preview="novel symbolic synthesis output"),
+            },
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["assessment"]["qou_score"] > 0.3
+    assert len(body["documents"]) == 4
+    assert len(body["timeline"]) == 5
+    assert body["explanation"]["quality_band"] in {"medium", "high"}
+    assert body["timeline"][0]["label"] == "Predict"
+
+
+def test_entropy_replay_rejects_invalid_packet_payload():
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/entropy/replay",
+            json={
+                "user_id": str(uuid4()),
+                "packet": {
+                    **_packet(0.3),
+                    "prediction_snapshot": {
+                        "model_version": "CSP-X1-Beta",
+                        "predicted_action": "click_notification",
+                        "confidence_score": 1.5,
+                    },
+                },
+            },
+        )
+
+    assert response.status_code == 422

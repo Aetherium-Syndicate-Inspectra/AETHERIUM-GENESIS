@@ -2,7 +2,7 @@ import math
 import re
 from dataclasses import dataclass
 
-from src.backend.genesis_core.entropy.schemas import EntropyAssessment, EntropyPacket, MeterState
+from src.backend.genesis_core.entropy.schemas import EntropyAssessment, EntropyPacket, MeterState, QoUBand
 
 
 _NOISE_PATTERN = re.compile(r"^[^\w\s]{3,}$")
@@ -167,12 +167,12 @@ class EntropyReplayStudio:
         return assessment, documents, timeline, explanation
 
     @staticmethod
-    def _quality_band(score: float) -> str:
+    def _quality_band(score: float) -> QoUBand:
         if score >= 0.8:
-            return "high"
+            return QoUBand.HIGH
         if score >= 0.3:
-            return "medium"
-        return "low"
+            return QoUBand.MEDIUM
+        return QoUBand.LOW
 
     @staticmethod
     def _verdict(assessment: EntropyAssessment) -> str:
