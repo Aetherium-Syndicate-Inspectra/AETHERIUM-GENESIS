@@ -213,7 +213,7 @@ pytest -q tests/test_region_extractor.py
 #### 🇹🇭 โร้ดแมปฟังก์ชันใหม่ (Thai)
 - **Scenario Presets**: ชุดสถานการณ์สำเร็จรูปสำหรับการทดสอบ intent/governance แบบซ้ำได้และวัดผลได้
 - **Plugin Renderer API**: API สำหรับเสียบ renderer เพิ่มเติม (2D/3D/immersive canvas) โดยไม่แตะแกนหลัก
-- **Session Replay**: ระบบ replay เหตุการณ์ทั้ง session พร้อม timeline annotation เพื่อวิเคราะห์การตัดสินใจย้อนหลัง
+- **Replay Diff Analyzer**: เปรียบเทียบ replay หลายรอบเพื่อหา drift ของเหตุผล/คะแนน และชี้เหตุของความต่างแบบ explainable
 - **Policy-Driven Link Analysis**: วิเคราะห์ความเชื่อมโยงของเหตุการณ์/เอกสารภายใต้นโยบายที่กำหนดได้ (risk-aware graph traversal)
 - **Hybrid Persistence**: ผสาน event ledger + indexed store เพื่อให้ทั้ง auditability และ query performance
 - **Collaboration Controls**: สิทธิ์การทำงานร่วมกันระดับทีม/บทบาท, approval chain, และ action visibility
@@ -223,7 +223,7 @@ pytest -q tests/test_region_extractor.py
 #### 🇬🇧 Future roadmap proposals (English)
 - **Scenario Presets** for repeatable intent/governance simulations with measurable outcomes.
 - **Plugin Renderer API** to plug in new render pipelines (2D/3D/immersive canvas) without changing core logic.
-- **Session Replay** with timeline annotations for post-session behavioral and decision analysis.
+- **Replay Diff Analyzer** to compare multiple replay runs, detect reasoning/score drift, and explain root deltas.
 - **Policy-Driven Link Analysis** for risk-aware relationship discovery across events and documents.
 - **Hybrid Persistence** combining immutable ledger flows with indexed stores for both auditability and fast querying.
 - **Collaboration Controls** including team/role permissions, approval chains, and action visibility boundaries.
