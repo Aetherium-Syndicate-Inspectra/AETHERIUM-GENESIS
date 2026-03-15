@@ -9,6 +9,7 @@ class PolicyResult:
     effect: str
     reason: str
     metadata: Dict[str, Any]
+    mode: str = "enforce"
 
 
 class PolicyEngine:
@@ -20,12 +21,18 @@ class PolicyEngine:
     def register(self, rule: Callable[[Dict[str, Any]], PolicyResult | None]) -> None:
         self._rules.append(rule)
 
-    def evaluate(self, context: Dict[str, Any]) -> PolicyResult:
+    def evaluate(self, context: Dict[str, Any], dry_run: bool = False) -> PolicyResult:
         for rule in self._rules:
             verdict = rule(context)
             if verdict is not None:
+                verdict.mode = "dry_run" if dry_run else "enforce"
                 return verdict
-        return PolicyResult(effect="ALLOW", reason="No matching policy rule", metadata={})
+        return PolicyResult(
+            effect="ALLOW",
+            reason="No matching policy rule",
+            metadata={"dry_run": dry_run},
+            mode="dry_run" if dry_run else "enforce",
+        )
 
 
 def default_policy_engine() -> PolicyEngine:

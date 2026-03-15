@@ -18,6 +18,29 @@ def test_policy_denies_secret_mutation_in_production():
     assert decision.recommendation == "suspend"
 
 
+def test_dry_run_does_not_enqueue_approval_ticket():
+    governance = GovernanceCore()
+    decision = governance.evaluate_action("send_email", "customer.outbound", {"real_world": True}, dry_run=True)
+
+    assert decision.status == "PENDING_APPROVAL"
+    assert decision.ticket_id == "DRY-RUN"
+    assert decision.reason.startswith("[DRY-RUN]")
+    assert governance.approval_router.get_inbox() == []
+
+
+def test_dry_run_policy_deny_uses_dry_run_reasoning():
+    governance = GovernanceCore()
+    decision = governance.evaluate_action(
+        "update_secret",
+        "prod/secret/payment",
+        {"environment": "production"},
+        dry_run=True,
+    )
+
+    assert decision.status == "DENIED"
+    assert decision.reason.startswith("[DRY-RUN]")
+
+
 def test_memory_fabric_projection(tmp_path):
     ledger = tmp_path / "akashic.json"
     ledger.write_text('{"chain": [{"hash": "abc", "timestamp": 1, "payload": {"type": "intent_created"}, "provenance": {"actor": "system"}}]}')
