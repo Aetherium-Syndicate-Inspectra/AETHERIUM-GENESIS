@@ -1,0 +1,30 @@
+{
+  "generated_at": "2026-03-15T00:00:00Z",
+  "canonical_envelope": "DirectiveEnvelope",
+  "versions": [
+    {
+      "protocol_version": "2026.03",
+      "envelope_version": "1.0.0",
+      "producer_support": ["2026.03"],
+      "consumer_support": ["2026.03"],
+      "status": "active",
+      "operations": [
+        "intent_ingest",
+        "reasoning_plan",
+        "governance_evaluate",
+        "execution_dispatch",
+        "memory_commit",
+        "manifestation_emit"
+      ],
+      "governance_fields": [
+        "decision",
+        "risk_tier",
+        "policy_effect",
+        "policy_mode",
+        "approval_ticket_id"
+      ],
+      "deprecated_fields": [],
+      "migration_notes": "Initial unified envelope baseline for governed pipeline replay."
+    }
+  ]
+}

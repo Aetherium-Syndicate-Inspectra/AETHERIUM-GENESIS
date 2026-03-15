@@ -25,7 +25,13 @@ class GovernanceCore:
         self.policy_engine = policy_engine or default_policy_engine()
         self.approval_router = approval_router or ApprovalRouter()
 
-    def evaluate_action(self, action: str, resource: str, payload: Dict[str, Any] | None = None) -> GovernanceDecision:
+    def evaluate_action(
+        self,
+        action: str,
+        resource: str,
+        payload: Dict[str, Any] | None = None,
+        dry_run: bool = False,
+    ) -> GovernanceDecision:
         payload = payload or {}
         tier = RiskTiering.classify(action, payload)
 
@@ -36,14 +42,26 @@ class GovernanceCore:
             "environment": payload.get("environment", "development"),
             "risk_tier": tier,
         }
-        policy: PolicyResult = self.policy_engine.evaluate(context)
+        policy: PolicyResult = self.policy_engine.evaluate(context, dry_run=dry_run)
+        mode_suffix = "_dry_run" if dry_run else ""
+        reason = f"[DRY-RUN] {policy.reason}" if dry_run else policy.reason
 
         if policy.effect == "DENY":
-            decision = GovernanceDecision(status="DENIED", risk_tier=tier, reason=policy.reason, recommendation="suspend")
-            self._record("governance_denied", action, resource, decision)
+            decision = GovernanceDecision(status="DENIED", risk_tier=tier, reason=reason, recommendation="suspend")
+            self._record(f"governance_denied{mode_suffix}", action, resource, decision, policy)
             return decision
 
         if policy.effect == "REQUIRE_APPROVAL":
+            if dry_run:
+                decision = GovernanceDecision(
+                    status="PENDING_APPROVAL",
+                    risk_tier=tier,
+                    reason=reason,
+                    ticket_id="DRY-RUN",
+                )
+                self._record(f"governance_pending_approval{mode_suffix}", action, resource, decision, policy)
+                return decision
+
             ticket = ApprovalTicket(
                 ticket_id=str(uuid.uuid4()),
                 action=action,
@@ -56,14 +74,14 @@ class GovernanceCore:
             decision = GovernanceDecision(
                 status="PENDING_APPROVAL",
                 risk_tier=tier,
-                reason=policy.reason,
+                reason=reason,
                 ticket_id=ticket.ticket_id,
             )
-            self._record("governance_pending_approval", action, resource, decision)
+            self._record("governance_pending_approval", action, resource, decision, policy)
             return decision
 
-        decision = GovernanceDecision(status="ALLOWED", risk_tier=tier, reason=policy.reason)
-        self._record("governance_allowed", action, resource, decision)
+        decision = GovernanceDecision(status="ALLOWED", risk_tier=tier, reason=reason)
+        self._record(f"governance_allowed{mode_suffix}", action, resource, decision, policy)
         return decision
 
     def recommend_recovery(self, event: Dict[str, Any]) -> Dict[str, str]:
@@ -79,7 +97,14 @@ class GovernanceCore:
             self.ledger.append_record(payload={"type": "governance_recovery_recommendation", **recommendation}, actor="governance")
         return recommendation
 
-    def _record(self, event_type: str, action: str, resource: str, decision: GovernanceDecision) -> None:
+    def _record(
+        self,
+        event_type: str,
+        action: str,
+        resource: str,
+        decision: GovernanceDecision,
+        policy: PolicyResult,
+    ) -> None:
         if not self.ledger:
             return
         self.ledger.append_record(
@@ -88,6 +113,11 @@ class GovernanceCore:
                 "action": action,
                 "resource": resource,
                 "decision": asdict(decision),
+                "policy": {
+                    "effect": policy.effect,
+                    "metadata": policy.metadata,
+                    "mode": policy.mode,
+                },
                 "timestamp": time.time(),
             },
             actor="governance",
