@@ -87,7 +87,6 @@ app.include_router(aetherium_router)
 app.include_router(metrics_router)
 app.include_router(entropy_router)
 app.include_router(governance_router)
-app.include_router(governance_router)
 
 # Global Services
 auditorium: Optional[AuditoriumService] = None
