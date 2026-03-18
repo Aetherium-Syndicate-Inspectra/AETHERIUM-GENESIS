@@ -38,8 +38,10 @@ class LifecycleManager:
         # 1. Connect Neural Bus
         await self.bus.connect()
 
-        # Subscribe to all events for internal routing
-        await self.bus.subscribe("lifecycle_manager", self._on_bus_event)
+        # Observe all events for internal routing regardless of the originating
+        # session/topic so request-response correlation remains stable across bus
+        # implementations.
+        await self.bus.add_global_listener(self._on_bus_event)
 
         self.running = True
         logger.info("Lifecycle manager started with configured bus runtime.")
@@ -103,20 +105,23 @@ class LifecycleManager:
     async def process_request(self, intent: SystemIntent, timeout: float = 10.0) -> Optional[SystemIntent]:
         """
         Injects an intent and waits for a response via AetherBus.
+        Responses are correlated by the canonical request correlation ID, not
+        by the transient response vector ID.
         """
         future = asyncio.get_running_loop().create_future()
-        self.pending_requests[intent.vector_id] = future
+        request_correlation_id = intent.correlation_id or intent.vector_id
+        self.pending_requests[request_correlation_id] = future
 
         try:
             await self.inject_intent(intent)
             response = await asyncio.wait_for(future, timeout=timeout)
             return response
         except asyncio.TimeoutError:
-            logger.error(f"⌛ [Lifecycle] Request {intent.vector_id} timed out.")
+            logger.error(f"⌛ [Lifecycle] Request {request_correlation_id} timed out.")
             # Fallback for tests or disconnected bus
             return await self.agio_sage.process_query(intent)
         finally:
-            self.pending_requests.pop(intent.vector_id, None)
+            self.pending_requests.pop(request_correlation_id, None)
 
     async def _handle_cognitive_query(self, intent: SystemIntent):
         """
