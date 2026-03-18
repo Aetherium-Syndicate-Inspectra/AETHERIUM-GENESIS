@@ -40,12 +40,15 @@ The runtime bus implementation is selected by environment variables.
 
 ## Envelope requirements
 
-Every cross-subsystem payload must travel inside `AetherEvent` with:
+Every cross-subsystem payload must travel inside `AetherEvent` V3 with:
 
-- `extensions.correlation_id` present at origin
-- `extensions.bus_metadata.codec`
-- `extensions.bus_metadata.compression`
-- stable `topic` metadata when routing semantics matter
+- `envelope_version=3.0.0`
+- `protocol_version`
+- `correlation_id` created at origin and preserved end-to-end
+- `origin`, `target`, and stable `topic`
+- `payload`
+- `governance`, `memory`, `timestamps`, and `content` metadata
+- `extensions.bus_metadata.codec/compression` synchronized with canonical `content.*` metadata
 
 This contract keeps deterministic replay and distributed tracing available to Governance Core, Akashic Memory, and manifestation surfaces.
 

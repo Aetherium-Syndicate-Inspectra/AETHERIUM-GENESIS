@@ -44,7 +44,7 @@
 
 ### 🗄️ System Architecture Diagram (Database-Centric)
 
-โครงสร้างด้านล่างอ้างอิงจาก schema จริงในโมดูล `src/backend/genesis_core/entropy/` โดยแสดงลำดับข้อมูลจาก `EntropySubmitRequest` → `EntropyPacket`/nested blocks → `EntropyAssessment` และการ persist ลง `EntropyLedgerEntry` ที่ใช้ hash-chain continuity
+โครงสร้างด้านล่างอ้างอิงจาก schema/runtime จริงใน `src/backend/genesis_core/entropy/schemas.py` และ `src/backend/genesis_core/entropy/ledger.py` โดยแสดงลำดับข้อมูลจาก `EntropySubmitRequest` → `EntropyPacket`/nested blocks → `EntropyAssessment` และการ persist ลง `EntropyLedgerEntry` ที่ใช้ hash-chain continuity
 
 ```mermaid
 erDiagram
@@ -118,7 +118,7 @@ erDiagram
     }
 ```
 
-**English note:** This diagram mirrors the current entropy schemas and ledger dataclass in code, connecting request payloads (`EntropySubmitRequest` + `EntropyPacket`) to evaluation (`EntropyAssessment`) and immutable persistence (`EntropyLedgerEntry` + hash-chain links).
+**English note:** This diagram mirrors the current runtime schema sources in `src/backend/genesis_core/entropy/schemas.py` and `src/backend/genesis_core/entropy/ledger.py`, connecting request payloads (`EntropySubmitRequest` + `EntropyPacket`) to evaluation (`EntropyAssessment`) and immutable persistence (`EntropyLedgerEntry` + hash-chain links).
 
 ---
 
@@ -234,24 +234,24 @@ pytest -q tests/test_region_extractor.py
 ### 4. Future Roadmap / แผนต่อยอดในอนาคต
 
 #### 🇹🇭 ข้อเสนอฟังก์ชัน/แนวทางต่อยอดใหม่ (Thai)
-- **Directive Envelope Standardization**: ทำ schema กลางสำหรับ Intent→Reasoning→Governance→Execution เพื่อให้ trace และ replay ข้ามโมดูลได้เสถียร
-- **Governance Dry-Run Mode**: โหมดจำลองผลการอนุมัติ/บล็อกก่อน execute จริง พร้อมเหตุผลและ risk score แบบ explainable
-- **Akashic Replay Studio**: UI สำหรับ replay เส้นทางเหตุการณ์ทีละขั้น พร้อม timeline, policy checkpoints และผลกระทบปลายทาง
-- **Cross-Vessel Transaction Guard**: กลไก two-phase style approval สำหรับงานที่กระทบหลาย vessel เพื่อลด partial failure
-- **Protocol Compatibility Matrix**: ตาราง compatibility ของ packet/schema version เพื่อช่วย rollout แบบ backward compatible
+- **Governed Execution Ledger Views**: สร้าง projection/query API สำหรับตรวจสอบหนึ่ง correlation chain ตั้งแต่ intent ถึง memory commit แบบพร้อมใช้งานในการ audit
+- **Cross-Repository Tachyon Contract Tests**: เพิ่มชุด compatibility tests ระหว่าง AETHERIUM-GENESIS, PRGX-AG และ AetherBus-Tachyon เพื่อกัน schema drift
+- **Directive Replay Export**: รองรับ export/import envelope chain เป็น artifact เดียวสำหรับ incident review และ deterministic replay
+- **Approval Escalation Surfaces**: เพิ่ม operator queue และ escalation policies สำหรับ Tier 2/3 actions ผ่าน kernel gate
+- **Manifestation Read Models**: สร้าง read-optimized backend projections ให้ frontend render directive/state ได้โดยไม่ตีความ business logic เอง
+- **Bus Resilience Drills**: เพิ่ม reconnect/failover/poison-packet simulation สำหรับ ZeroMQ/WebSocket bridge ก่อน production rollout
 - **Memory Integrity Sentinel**: งานตรวจความครบถ้วน hash-chain + anomaly detection ของ ledger/projections พร้อม alert
 - **Observability Pack (OTel-first)**: เพิ่ม trace/span และ governance tags มาตรฐานเพื่อให้ root-cause ได้เร็วขึ้น
-- **Policy Simulation Sandbox**: พื้นที่ทดสอบ policy-as-code กับเหตุการณ์สังเคราะห์ก่อน deploy จริง
 
 #### 🇬🇧 New feature and expansion proposals (English)
-- **Directive Envelope Standardization** for stable Intent→Reasoning→Governance→Execution tracing and replay across subsystems.
-- **Governance Dry-Run Mode** to simulate approve/block decisions before execution, with explainable rationales and risk scores.
-- **Akashic Replay Studio** for step-by-step event playback with timeline views, policy checkpoints, and downstream impact visibility.
-- **Cross-Vessel Transaction Guard** with two-phase style approvals for multi-vessel operations to reduce partial failures.
-- **Protocol Compatibility Matrix** to track packet/schema version interoperability and support backward-compatible rollouts.
+- **Governed Execution Ledger Views** to query a single correlation chain from intent through memory commit for audit operations.
+- **Cross-Repository Tachyon Contract Tests** to prevent schema drift across AETHERIUM-GENESIS, PRGX-AG, and AetherBus-Tachyon.
+- **Directive Replay Export** to package envelope chains as portable artifacts for incident review and deterministic replay.
+- **Approval Escalation Surfaces** for Tier 2/3 operator queues and escalation policies at the governance kernel boundary.
+- **Manifestation Read Models** so the frontend can render backend-authored directives without re-implementing decision logic.
+- **Bus Resilience Drills** covering reconnect, failover, and poison-packet scenarios for the ZeroMQ/WebSocket bridge.
 - **Memory Integrity Sentinel** to validate hash-chain continuity and detect ledger/projection anomalies with alerting.
 - **Observability Pack (OTel-first)** introducing standardized traces/spans and governance tags for faster incident root-cause analysis.
-- **Policy Simulation Sandbox** to test policy-as-code behavior against synthetic scenarios prior to production deployment.
 
 ---
 

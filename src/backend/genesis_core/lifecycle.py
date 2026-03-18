@@ -80,7 +80,14 @@ class LifecycleManager:
         """
         event = AetherEvent(
             type=AetherEventType.INTENT_DETECTED,
-            session_id=None
+            session_id=intent.origin_agent,
+            topic="intent.detected",
+            correlation_id=intent.correlation_id or intent.vector_id,
+            causation_id=intent.vector_id,
+            origin={"service": "genesis_core", "subsystem": "mind", "channel": intent.origin_agent},
+            target={"service": "genesis_core", "subsystem": "bus", "channel": intent.target_agent},
+            payload={"system_intent": intent.model_dump()},
+            memory={"ledger_event_type": "intent_detected", "causal_chain": [intent.vector_id]},
         )
         event.extensions["system_intent"] = intent.model_dump()
         await self.bus.publish(event)

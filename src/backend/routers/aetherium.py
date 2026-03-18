@@ -6,14 +6,32 @@ import logging
 import asyncio
 from datetime import datetime
 
-from src.backend.genesis_core.protocol.schemas import (
-    AetherEvent, AetherEventType, StateData, IntentData, IntentVector
-)
+from src.backend.genesis_core.protocol.schemas import AetherEvent, AetherEventType, StateData
 from src.backend.genesis_core.models.intent import SystemIntent, IntentPayload, IntentContext
 from src.backend.genesis_core.protocol.abe_contract import ABEContract
 from src.backend.security.key_manager import KeyManager
 
 logger = logging.getLogger("AetheriumAPI")
+
+def _validate_ingress_envelope(raw_payload: Dict[str, Any], session_id: str) -> AetherEvent:
+    text = raw_payload.get("text", "")
+    payload = {
+        "client_message": raw_payload,
+        "text": text,
+    }
+    return AetherEvent(
+        type=AetherEventType.INTENT_DETECTED,
+        session_id=session_id,
+        topic="intent.ingress",
+        correlation_id=raw_payload.get("correlation_id") or session_id,
+        causation_id=raw_payload.get("causation_id"),
+        origin={"service": "api", "subsystem": "body", "channel": session_id},
+        target={"service": "genesis_core", "subsystem": "mind", "channel": "lifecycle"},
+        payload=payload,
+        governance={"validated": True, "policy_mode": "enforce"},
+        memory={"ledger_event_type": "intent_ingress", "causal_chain": [session_id]},
+    )
+
 
 router = APIRouter(tags=["aetherium"])
 
@@ -109,6 +127,7 @@ async def stream_endpoint(websocket: WebSocket):
                 metric_collector.track_event(event)
 
             # Send to WS
+            AetherEvent.model_validate(event.model_dump(mode="json"))
             await websocket.send_text(event.model_dump_json())
         except Exception as e:
             logger.warning(f"Bridge Error {session_id}: {e}")
@@ -120,7 +139,12 @@ async def stream_endpoint(websocket: WebSocket):
     await bus.publish(AetherEvent(
         type=AetherEventType.HANDSHAKE,
         session_id=session_id,
-        state=StateData(state="connected", confidence=1.0, energy=1.0, coherence=1.0)
+        topic="manifestation.handshake",
+        origin={"service": "api", "subsystem": "body", "channel": session_id},
+        target={"service": "client", "subsystem": "manifestation", "channel": session_id},
+        payload={"state": {"state": "connected", "confidence": 1.0, "energy": 1.0, "coherence": 1.0}},
+        state=StateData(state="connected", confidence=1.0, energy=1.0, coherence=1.0),
+        memory={"ledger_event_type": "manifestation_handshake", "causal_chain": [session_id]},
     ))
 
     try:
@@ -136,6 +160,9 @@ async def stream_endpoint(websocket: WebSocket):
             if payload.get("type") == "PING":
                 await websocket.send_json({"type": "PONG"})
                 continue
+
+            ingress_envelope = _validate_ingress_envelope(payload, session_id)
+            await bus.publish(ingress_envelope)
 
             user_text = payload.get("text", "")
             if not user_text and "intent_vector" in payload:
@@ -157,13 +184,30 @@ async def stream_endpoint(websocket: WebSocket):
 
                 async def process_task():
                     try:
-                        await engine.lifecycle.agio_sage.process_query(intent, emitter=bus.publish)
+                        response_intent = await engine.lifecycle.process_request(intent)
+                        if response_intent:
+                            await bus.publish(AetherEvent(
+                                type=AetherEventType.MANIFESTATION,
+                                session_id=session_id,
+                                topic="manifestation.response",
+                                correlation_id=response_intent.correlation_id or intent.vector_id,
+                                causation_id=intent.vector_id,
+                                origin={"service": "genesis_core", "subsystem": "mind", "channel": "lifecycle"},
+                                target={"service": "client", "subsystem": "manifestation", "channel": session_id},
+                                payload={"system_intent": response_intent.model_dump()},
+                                governance={"validated": True, "policy_mode": "enforce"},
+                                memory={"ledger_event_type": "manifestation_emit", "causal_chain": [intent.vector_id]},
+                            ))
                     except Exception as e:
                         logger.error(f"Processing Error: {e}")
                         await bus.publish(AetherEvent(
                             type=AetherEventType.DEGRADATION,
                             session_id=session_id,
-                            error=str(e)
+                            topic="system.error",
+                            origin={"service": "api", "subsystem": "body", "channel": session_id},
+                            target={"service": "client", "subsystem": "manifestation", "channel": session_id},
+                            payload={"error": str(e)},
+                            error=str(e),
                         ))
 
                 asyncio.create_task(process_task())

@@ -41,6 +41,7 @@ class AetherBusExtreme(BaseAetherBus):
         if not self._running:
             return await self.error(event, "bus_not_running")
 
+        event = self.validate_event(event, stage="publish")
         self.ensure_correlation_id(event)
         tasks = []
 

@@ -3,6 +3,7 @@ from typing import Dict, Any, Optional, List
 from pydantic import BaseModel, Field
 import logging
 import time
+from src.backend.genesis_core.protocol.schemas import AetherEvent
 
 logger = logging.getLogger("GovernanceCore")
 
@@ -52,6 +53,13 @@ class GovernanceCore:
             return ActionTier.TIER_1_REVERSIBLE_LOW_RISK
 
         return ActionTier.TIER_0_READ_ONLY
+
+    def validate_envelope(self, envelope: AetherEvent) -> AetherEvent:
+        validated = AetherEvent.model_validate(envelope.model_dump(mode="json"))
+        validated.governance.validated = True
+        if not validated.correlation_id:
+            raise ValueError("Governance gate requires correlation_id")
+        return validated
 
     def _record_ledger_event(self, event_type: str, request: ApprovalRequest, decision: Optional[str] = None):
         if not self.ledger:

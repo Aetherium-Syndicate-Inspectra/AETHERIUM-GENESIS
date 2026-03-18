@@ -87,12 +87,13 @@ class AetherBusTachyon(BaseAetherBus):
         if not self._running:
             return await self.error(event, "bus_not_running")
 
+        event = self.validate_event(event, stage="publish")
         correlation_id = self.ensure_correlation_id(event)
         payload = self.serialize_event(event)
         delivered = False
 
         if self._publisher is not None:
-            topic = event.extensions.get("topic") or event.session_id or "system.broadcast"
+            topic = event.topic or event.extensions.get("topic") or event.session_id or "system.broadcast"
             await self._publisher.send_multipart([topic.encode("utf-8"), payload])
             delivered = True
         else:
