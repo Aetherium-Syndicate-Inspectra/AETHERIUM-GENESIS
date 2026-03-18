@@ -22,17 +22,15 @@ class TestWorkspaceVessel(unittest.TestCase):
             self.vessel._safe_path("../secret.txt")
 
     def test_simulate(self):
-        loop = asyncio.get_event_loop()
-        preview = loop.run_until_complete(self.vessel.simulate("write_file", {"path": "test.txt", "content": "Hello"}))
+        preview = asyncio.run(self.vessel.simulate("write_file", {"path": "test.txt", "content": "Hello"}))
         self.assertEqual(preview.risk_tier, ActionTier.TIER_1_REVERSIBLE_LOW_RISK)
         self.assertIn("Create file", preview.summary)
 
     def test_execute_write_read(self):
-        loop = asyncio.get_event_loop()
         # Write
-        loop.run_until_complete(self.vessel.execute("write_file", {"path": "hi.txt", "content": "Aether"}))
+        asyncio.run(self.vessel.execute("write_file", {"path": "hi.txt", "content": "Aether"}))
         # Read
-        result = loop.run_until_complete(self.vessel.execute("read_file", {"path": "hi.txt"}))
+        result = asyncio.run(self.vessel.execute("read_file", {"path": "hi.txt"}))
         self.assertEqual(result["content"], "Aether")
 
 if __name__ == '__main__':

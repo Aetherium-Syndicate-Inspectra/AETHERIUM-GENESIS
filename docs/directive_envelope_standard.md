@@ -1,4 +1,4 @@
-# Directive Envelope Standard (v1)
+# Directive Envelope Standard (V3)
 
 This document defines the canonical directive envelope used to connect Intent, Reasoning, Governance, Execution, Memory commit, and Manifestation.
 
@@ -12,45 +12,57 @@ This document defines the canonical directive envelope used to connect Intent, R
 
 ```json
 {
-  "envelope_version": "1.0.0",
+  "envelope_version": "3.0.0",
   "protocol_version": "2026.03",
   "envelope_id": "uuid",
-  "trace_id": "otel-trace-id",
-  "intent": {
-    "intent_id": "string",
-    "origin": "agent|user|system",
-    "input": {},
-    "timestamp": 0
+  "type": "intent_detected|manifestation|degradation|...",
+  "correlation_id": "uuid-created-at-origin",
+  "causation_id": "uuid-or-null",
+  "origin": {
+    "service": "api|genesis_core|governance|memory|tachyon",
+    "subsystem": "body|mind|kernel|memory|bus",
+    "instance": "optional-runtime-instance",
+    "channel": "session-or-stream-id"
   },
-  "reasoning": {
-    "planner": "string",
-    "summary": "string",
-    "artifacts": [],
-    "timestamp": 0
+  "target": {
+    "service": "client|genesis_core|governance|memory|broadcast",
+    "subsystem": "manifestation|mind|kernel|memory|bus",
+    "instance": "optional-runtime-instance",
+    "channel": "session-or-stream-id"
   },
+  "topic": "intent.ingress",
+  "payload": {},
   "governance": {
-    "decision": "ALLOWED|DENIED|PENDING_APPROVAL",
-    "risk_tier": "TIER_0..TIER_3",
-    "policy_effect": "ALLOW|DENY|REQUIRE_APPROVAL",
+    "decision": "ALLOWED|DENIED|PENDING_APPROVAL|null",
+    "risk_tier": "TIER_0..TIER_3|null",
+    "policy_effect": "ALLOW|DENY|REQUIRE_APPROVAL|null",
     "policy_mode": "enforce|dry_run",
     "approval_ticket_id": "string|null",
-    "timestamp": 0
+    "validated": true
   },
-  "execution": {
-    "vessels": [],
-    "status": "pending|committed|aborted",
-    "side_effects": [],
-    "timestamp": 0
+  "memory": {
+    "ledger_event_type": "intent_ingress|governance_allowed|execution_completed|...",
+    "ledger_record_id": "string|null",
+    "causal_chain": ["uuid"],
+    "replayable": true
   },
-  "memory_commit": {
-    "ledger_hash": "string",
-    "hash_prev": "string",
-    "timestamp": 0
+  "timestamps": {
+    "created_at": "2026-03-18T00:00:00+00:00",
+    "published_at": "2026-03-18T00:00:00+00:00",
+    "consumed_at": "2026-03-18T00:00:00+00:00"
   },
-  "manifestation": {
-    "surface": "gunui|api|dashboard",
-    "state": {},
-    "timestamp": 0
+  "content": {
+    "content_type": "application/json",
+    "content_encoding": "identity",
+    "content_compression": "none",
+    "codec": "json|msgpack"
+  },
+  "extensions": {
+    "bus_metadata": {
+      "codec": "json|msgpack",
+      "compression": "none|zlib",
+      "content_encoding": "identity"
+    }
   }
 }
 ```
@@ -59,11 +71,67 @@ This document defines the canonical directive envelope used to connect Intent, R
 
 1. New fields must be additive and optional within a minor version.
 2. Removing or renaming fields requires a major version bump.
-3. Producers and consumers must validate `envelope_version` and `protocol_version` before processing.
-4. Governance metadata (`risk_tier`, `policy_effect`, `policy_mode`) is mandatory for any executable directive.
+3. Producers and consumers must validate `envelope_version`, `protocol_version`, `topic`, and `correlation_id` before processing.
+4. Governance metadata (`policy_mode`, `validated`) is mandatory for every governed runtime handoff. Executable directives additionally require `decision` / `risk_tier` once policy has run.
 
 ## Runtime requirements
 
 - All execution-capable flows must log envelope-correlated governance events.
 - Dry-run decisions must be tagged with `policy_mode=dry_run` and must not produce irreversible side effects.
-- Envelope IDs and trace IDs must be persisted into Akashic records for replay and audit exports.
+- Envelope IDs, correlation IDs, and causation IDs must be persisted into Akashic records for replay and audit exports.
+
+## Validation boundaries in runtime
+
+- **API ingress:** raw client payloads are upgraded into V3 envelopes before entering lifecycle handling.
+- **Bus publish / consume:** `BaseAetherBus` validates V3 requirements before serialization and after decode.
+- **Governance gate:** `GovernanceCore.validate_envelope(...)` validates the envelope before policy/risk evaluation.
+- **Vessel execution path:** execution adapters must validate the envelope before simulating or executing side effects.
+
+## Migration notes from legacy envelopes
+
+Legacy `AetherEvent` packets and `AkashicEnvelope` instances are automatically upgraded when possible:
+
+- legacy `session_id` becomes the default `topic` and fallback `correlation_id`
+- legacy `state`, `intent`, `manifestation`, and `error` blocks are copied into canonical `payload`
+- legacy `extensions.bus_metadata.codec/compression` populate `content.codec` and `content.content_compression`
+- `AkashicEnvelope` now wraps `AetherEvent` and should be treated as a compatibility shim only
+
+## End-to-end example
+
+```json
+[
+  {
+    "type": "intent_detected",
+    "topic": "intent.ingress",
+    "correlation_id": "corr-7f4f",
+    "causation_id": null,
+    "origin": {"service": "api", "subsystem": "body", "channel": "ae-1234"},
+    "target": {"service": "genesis_core", "subsystem": "mind", "channel": "lifecycle"},
+    "payload": {"text": "summarize the audit log"},
+    "governance": {"policy_mode": "enforce", "validated": true},
+    "memory": {"ledger_event_type": "intent_ingress", "causal_chain": ["corr-7f4f"], "replayable": true}
+  },
+  {
+    "type": "state_update",
+    "topic": "governance.decision",
+    "correlation_id": "corr-7f4f",
+    "causation_id": "corr-7f4f",
+    "origin": {"service": "governance", "subsystem": "kernel"},
+    "target": {"service": "genesis_core", "subsystem": "hands"},
+    "payload": {"action": "read_file", "resource": "audit.log"},
+    "governance": {"decision": "ALLOWED", "risk_tier": "TIER_0_READ_ONLY", "policy_effect": "ALLOW", "policy_mode": "enforce", "validated": true},
+    "memory": {"ledger_event_type": "governance_allowed", "causal_chain": ["corr-7f4f"], "replayable": true}
+  },
+  {
+    "type": "manifestation",
+    "topic": "manifestation.response",
+    "correlation_id": "corr-7f4f",
+    "causation_id": "corr-7f4f",
+    "origin": {"service": "genesis_core", "subsystem": "mind"},
+    "target": {"service": "client", "subsystem": "manifestation", "channel": "ae-1234"},
+    "payload": {"system_intent": {"intent_type": "COGNITIVE_RESPONSE"}},
+    "governance": {"policy_mode": "enforce", "validated": true},
+    "memory": {"ledger_event_type": "manifestation_emit", "causal_chain": ["corr-7f4f"], "replayable": true}
+  }
+]
+```

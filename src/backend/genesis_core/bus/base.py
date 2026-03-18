@@ -58,18 +58,20 @@ class BaseAetherBus(ABC, CorrelationMixin):
         pass
 
     async def publish_request(self, request: BusPublishRequest) -> Optional[BusAck]:
+        event = self.validate_event(request.event, stage="publish_request")
         metadata = dict(request.metadata)
         correlation_id = self.ensure_correlation_id(
-            request.event,
+            event,
             metadata=metadata,
             correlation_id=request.correlation_id,
         )
         metadata.setdefault("codec", (request.codec or self.config.codec).value)
         metadata.setdefault("compression", (request.compression or self.config.compression).value)
         if request.topic:
-            request.event.extensions.setdefault("topic", request.topic)
-        request.event.extensions.setdefault("bus_metadata", {}).update(metadata)
-        return await self.publish(request.event)
+            event.extensions.setdefault("topic", request.topic)
+            event.topic = request.topic
+        event.extensions.setdefault("bus_metadata", {}).update(metadata)
+        return await self.publish(event)
 
     @abstractmethod
     async def subscribe(self, session_id: str, callback):
@@ -104,15 +106,34 @@ class BaseAetherBus(ABC, CorrelationMixin):
         return MsgpackBusCodec()
 
     def serialize_event(self, event: AetherEvent, codec: Optional[BusCodec] = None) -> bytes:
+        event = self.validate_event(event, stage="publish")
         self.ensure_correlation_id(event)
         event.extensions.setdefault("bus_metadata", {})
         event.extensions["bus_metadata"].setdefault("codec", (codec or self.config.codec).value)
         event.extensions["bus_metadata"].setdefault("compression", self.config.compression.value)
+        event.content.codec = event.extensions["bus_metadata"]["codec"]
+        event.content.content_compression = event.extensions["bus_metadata"]["compression"]
+        event.timestamps.published_at = event.timestamps.published_at or event.timestamps.created_at
         return self.get_codec(codec).encode(event.model_dump(mode="json"))
 
     def deserialize_event(self, payload: bytes, codec: Optional[BusCodec] = None) -> AetherEvent:
         data = self.get_codec(codec).decode(payload)
-        return AetherEvent(**data)
+        event = AetherEvent.model_validate(data)
+        event.timestamps.consumed_at = event.timestamps.consumed_at or event.timestamps.created_at
+        return self.validate_event(event, stage="consume")
+
+    @staticmethod
+    def validate_event(event: AetherEvent, stage: str = "runtime") -> AetherEvent:
+        validated = AetherEvent.model_validate(event.model_dump(mode="json"))
+        if not validated.envelope_version.startswith("3."):
+            raise ValueError(f"Unsupported envelope_version during {stage}: {validated.envelope_version}")
+        if not validated.protocol_version:
+            raise ValueError(f"Missing protocol_version during {stage}")
+        if not validated.topic:
+            raise ValueError(f"Missing topic during {stage}")
+        if not validated.correlation_id:
+            raise ValueError(f"Missing correlation_id during {stage}")
+        return validated
 
     def write(self, topic: str, payload: Any) -> str:
         warnings.warn(
@@ -124,9 +145,11 @@ class BaseAetherBus(ABC, CorrelationMixin):
         event = AetherEvent(
             type=AetherEventType.STATE_UPDATE,
             session_id=topic if topic != "system.broadcast" else "*",
+            topic=topic,
+            origin={"service": "legacy_writer", "subsystem": "bus"},
+            target={"service": "broadcast", "subsystem": "bus", "channel": topic},
+            payload=payload if isinstance(payload, dict) else {"raw_payload": payload},
         )
-        event.extensions["raw_payload"] = payload
-        event.extensions["topic"] = topic
         self.ensure_correlation_id(event)
         try:
             loop = asyncio.get_running_loop()

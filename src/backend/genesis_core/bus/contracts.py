@@ -105,14 +105,15 @@ class CorrelationMixin:
         metadata: Optional[MutableMapping[str, Any]] = None,
         correlation_id: Optional[str] = None,
     ) -> str:
-        extensions = event.extensions
         resolved = (
             correlation_id
-            or extensions.get("correlation_id")
+            or getattr(event, "correlation_id", None)
+            or event.extensions.get("correlation_id")
             or getattr(event, "session_id", None)
             or str(uuid.uuid4())
         )
-        extensions.setdefault("correlation_id", resolved)
+        event.correlation_id = resolved
+        event.extensions["correlation_id"] = resolved
         if metadata is not None:
             metadata.setdefault("correlation_id", resolved)
         return resolved
