@@ -87,6 +87,7 @@ This document defines the canonical directive envelope used to connect Intent, R
 - **Bus publish / consume:** `BaseAetherBus` validates V3 requirements before serialization and after decode.
 - **Governance gate:** `GovernanceCore.validate_envelope(...)` and `evaluate_envelope(...)` validate the full envelope context before policy/risk evaluation.
 - **Vessel execution path:** execution adapters must validate the envelope before simulating or executing side effects.
+- **Vessel execution path:** executable directive payloads must include `action`, `params`, `execution_scope`, `actor`, and `metadata`; adapters must reject hardcoded credentials and log an Akashic `execution_outcome` before returning.
 
 ## Correlation policy
 

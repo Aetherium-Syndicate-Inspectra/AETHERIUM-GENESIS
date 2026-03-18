@@ -1,19 +1,23 @@
-from typing import Any, Dict
-
-from src.backend.vessels.base import ActionPreview, ExecutionVessel
+from src.backend.genesis_core.protocol.schemas import AetherEvent
+from src.backend.vessels.base import ActionPreview, DirectivePayload, ExecutionVessel
 
 
 class SlackVessel(ExecutionVessel):
     def __init__(self):
         super().__init__(name="slack")
 
-    def preview(self, action: str, params: Dict[str, Any]) -> ActionPreview:
+    def _preview(self, envelope: AetherEvent, payload: DirectivePayload) -> ActionPreview:
+        channel = payload.params.get("channel", "#general")
         return ActionPreview(
-            plan=f"{action} message to {params.get('channel', '#general')}",
-            diff=params.get("text", "")[:200],
+            plan=f"Dispatch Slack adapter action {payload.action} to {channel}",
+            diff=str(payload.params.get("text", ""))[:200],
             tools=["slack.api"],
-            evidence={"mode": "draft"},
+            evidence={"mode": "draft", "topic": envelope.topic},
         )
 
-    def execute(self, action: str, params: Dict[str, Any]) -> Dict[str, Any]:
-        return {"status": "draft_only", "channel": params.get("channel"), "action": action}
+    def _execute(self, envelope: AetherEvent, payload: DirectivePayload) -> dict:
+        return {
+            "status": "draft_only",
+            "channel": payload.params.get("channel"),
+            "action": payload.action,
+        }
