@@ -5,6 +5,8 @@ import os
 import time
 from typing import List, Dict, Optional, Any
 
+from src.backend.genesis_core.protocol.correlation import CorrelationPolicy
+
 class AkashicRecords:
     """
     The Akashic Records: An immutable ledger of the system's life,
@@ -28,7 +30,8 @@ class AkashicRecords:
                       payload: Dict,
                       actor: str = "system",
                       intent_id: Optional[str] = None,
-                      causal_link: Optional[str] = None) -> str:
+                      causal_link: Optional[str] = None,
+                      correlation: Optional[Dict[str, Any]] = None) -> str:
         """
         Appends a new immutable record to the chain with provenance metadata.
         """
@@ -39,10 +42,18 @@ class AkashicRecords:
             prev_hash = chain[-1]['hash'] if chain else "0" * 64
             timestamp = time.time()
 
+            normalized_correlation = CorrelationPolicy.build(
+                correlation_id=(correlation or {}).get("correlation_id") or payload.get("correlation_id"),
+                causation_id=(correlation or {}).get("causation_id") or payload.get("causation_id") or causal_link,
+                trace_id=(correlation or {}).get("trace_id") or payload.get("trace_id"),
+                fallback=intent_id or actor,
+            )
+
             envelope = {
                 "actor": actor,
                 "intent_id": intent_id,
                 "causal_link": causal_link,
+                "correlation": normalized_correlation,
                 "data": payload
             }
 
@@ -54,9 +65,11 @@ class AkashicRecords:
                 "provenance": {
                     "actor": actor,
                     "intent_id": intent_id,
-                    "causal_link": causal_link
+                    "causal_link": causal_link,
+                    "correlation": normalized_correlation
                 },
                 "payload": payload,
+                "correlation": normalized_correlation,
                 "prev_hash": prev_hash,
                 "hash": curr_hash
             }
@@ -90,6 +103,12 @@ class AkashicRecords:
                     "actor": prov.get("actor", "system"),
                     "intent_id": prov.get("intent_id"),
                     "causal_link": prov.get("causal_link"),
+                    "correlation": block.get("correlation") or prov.get("correlation") or CorrelationPolicy.build(
+                        correlation_id=payload.get("correlation_id"),
+                        causation_id=payload.get("causation_id") or prov.get("causal_link"),
+                        trace_id=payload.get("trace_id"),
+                        fallback=prov.get("intent_id") or prov.get("actor", "system"),
+                    ),
                     "data": payload
                 }
 

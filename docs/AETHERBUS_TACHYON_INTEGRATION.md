@@ -67,3 +67,25 @@ Governance decisions should publish approval, block, escalation, and override ou
 ### Aetherium-Manifest
 
 The UI should subscribe through the WebSocket bridge and render only backend-authored directives. Frontend state must not become an alternate semantic source.
+
+## Correlation and replay contract
+
+Phase 1 requires a single correlation policy for every V3 envelope crossing subsystem boundaries. Implementations in AETHERIUM-GENESIS must create or normalize the following fields at the event origin:
+
+- `correlation_id`: stable execution-cycle identifier
+- `causation_id`: parent envelope or approval/execution precursor
+- `trace_id`: replay/distributed-trace identifier shared across bus, governance, memory, and manifestation
+
+### Required propagation path
+
+1. **API ingress / intent origin** creates IDs if the client omits them.
+2. **Bus publish/subscribe** preserves all three fields and mirrors them into websocket-facing directive payloads.
+3. **Governance evaluation / approval routing** persists the same IDs into ledger/audit records.
+4. **Memory commit** stores the IDs in canonical records and derived projections for deterministic replay.
+5. **Manifestation/UI** renders backend-authored `directive_state` using the same `correlation_id` / `trace_id` chain.
+
+### Migration notes
+
+- Legacy `session_id` remains a compatibility fallback for `correlation_id` and `trace_id`, but new producers should send canonical fields directly.
+- Compatibility bus implementations may remain available for tests, but Phase 1 runtime default remains `tachyon`.
+- Replay tooling should query memory records by `correlation_id` first and use `trace_id` for cross-surface aggregation.

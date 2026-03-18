@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 from collections import defaultdict
 from typing import Awaitable, Callable, DefaultDict, Dict, Optional, Set
@@ -149,11 +150,15 @@ class AetherBusTachyon(BaseAetherBus):
         elif event.session_id in self._subscribers:
             callbacks.append(self._subscribers[event.session_id])
         for callback in callbacks:
-            await callback(event)
+            result = callback(event)
+            if inspect.isawaitable(result):
+                await result
 
     async def _dispatch_global(self, event: AetherEvent):
         for callback in self._global_listeners:
-            await callback(event)
+            result = callback(event)
+            if inspect.isawaitable(result):
+                await result
 
     async def _fanout_websocket(self, event: AetherEvent):
         if not self._ws_clients:

@@ -9,6 +9,7 @@ from src.backend.genesis_core.agents.validator import ValidatorAgent
 from src.backend.genesis_core.governance.core import GovernanceCore
 from src.backend.genesis_core.agents.agio_sage import AgioSage
 from src.backend.genesis_core.models.intent import SystemIntent, IntentPayload, IntentContext
+from src.backend.genesis_core.protocol.correlation import CorrelationPolicy
 from src.backend.genesis_core.protocol.schemas import AetherEvent, AetherEventType
 from src.backend.genesis_core.memory.akashic import AkashicRecords
 
@@ -78,16 +79,22 @@ class LifecycleManager:
         Sopan Protocol Entry Point.
         Broadcasts intent to the AetherBus.
         """
+        correlation = CorrelationPolicy.build(
+            correlation_id=intent.correlation_id or intent.vector_id,
+            causation_id=intent.vector_id,
+            session_id=intent.origin_agent,
+        )
         event = AetherEvent(
             type=AetherEventType.INTENT_DETECTED,
             session_id=intent.origin_agent,
             topic="intent.detected",
-            correlation_id=intent.correlation_id or intent.vector_id,
-            causation_id=intent.vector_id,
+            correlation_id=correlation["correlation_id"],
+            causation_id=correlation["causation_id"],
+            trace_id=correlation["trace_id"],
             origin={"service": "genesis_core", "subsystem": "mind", "channel": intent.origin_agent},
             target={"service": "genesis_core", "subsystem": "bus", "channel": intent.target_agent},
             payload={"system_intent": intent.model_dump()},
-            memory={"ledger_event_type": "intent_detected", "causal_chain": [intent.vector_id]},
+            memory={"ledger_event_type": "intent_detected", "causal_chain": [correlation["correlation_id"]]},
         )
         event.extensions["system_intent"] = intent.model_dump()
         await self.bus.publish(event)

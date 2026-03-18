@@ -87,6 +87,23 @@ This document defines the canonical directive envelope used to connect Intent, R
 - **Governance gate:** `GovernanceCore.validate_envelope(...)` validates the envelope before policy/risk evaluation.
 - **Vessel execution path:** execution adapters must validate the envelope before simulating or executing side effects.
 
+## Correlation policy
+
+The protocol layer defines one canonical correlation policy for replayable envelopes:
+
+- `correlation_id` must exist on every envelope and represent the governed execution cycle.
+- `causation_id` should point to the parent envelope, approval request, or execution precursor when applicable.
+- `trace_id` must remain stable across bus transport, governance records, websocket manifestation payloads, and memory projections.
+- If a client omits these values at ingress, the backend must create them before the first publish.
+- UI payloads should surface this metadata via backend-authored `directive_state`; frontend code must not infer or rewrite correlation semantics locally.
+
+### Replay checklist
+
+1. Find the origin envelope by `correlation_id`.
+2. Walk `causation_id` links to reconstruct the event chain.
+3. Use `trace_id` to join UI, governance, and memory views for the same execution cycle.
+4. Confirm ledger/projection records preserve the same metadata before replaying side effects.
+
 ## Migration notes from legacy envelopes
 
 Legacy `AetherEvent` packets and `AkashicEnvelope` instances are automatically upgraded when possible:

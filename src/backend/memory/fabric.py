@@ -39,6 +39,7 @@ class MemoryFabric:
                 "timestamp": block.get("timestamp"),
                 "payload": payload,
                 "provenance": provenance,
+                "correlation": block.get("correlation") or provenance.get("correlation") or payload.get("correlation") or {},
             }
             out_file = self.targets[memory_type] / f"{block.get('hash', 'event')}.json"
             with open(out_file, "w", encoding="utf-8") as write_handle:

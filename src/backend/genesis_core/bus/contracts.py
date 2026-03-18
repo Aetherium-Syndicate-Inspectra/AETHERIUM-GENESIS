@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Awaitable, Callable, Dict, Mapping, MutableMapping, Optional, Protocol
 
+from src.backend.genesis_core.protocol.correlation import CorrelationPolicy
 from src.backend.genesis_core.protocol.schemas import AetherEvent
 
 
@@ -104,16 +104,21 @@ class CorrelationMixin:
         event: AetherEvent,
         metadata: Optional[MutableMapping[str, Any]] = None,
         correlation_id: Optional[str] = None,
+        causation_id: Optional[str] = None,
+        trace_id: Optional[str] = None,
     ) -> str:
-        resolved = (
-            correlation_id
-            or getattr(event, "correlation_id", None)
-            or event.extensions.get("correlation_id")
-            or getattr(event, "session_id", None)
-            or str(uuid.uuid4())
+        resolved = CorrelationPolicy.build(
+            correlation_id=correlation_id or getattr(event, "correlation_id", None) or event.extensions.get("correlation_id"),
+            causation_id=causation_id or getattr(event, "causation_id", None) or event.extensions.get("causation_id"),
+            trace_id=trace_id or (correlation_id if correlation_id else None) or event.extensions.get("trace_id") or getattr(event, "trace_id", None),
+            session_id=getattr(event, "session_id", None),
         )
-        event.correlation_id = resolved
-        event.extensions["correlation_id"] = resolved
+        event.correlation_id = resolved["correlation_id"] or event.correlation_id
+        event.causation_id = resolved["causation_id"]
+        event.trace_id = resolved["trace_id"] or event.trace_id
+        event.extensions["correlation_id"] = event.correlation_id
+        event.extensions["causation_id"] = event.causation_id
+        event.extensions["trace_id"] = event.trace_id
         if metadata is not None:
-            metadata.setdefault("correlation_id", resolved)
-        return resolved
+            metadata.update({k: v for k, v in resolved.items() if v is not None})
+        return event.correlation_id

@@ -64,6 +64,7 @@ class BaseAetherBus(ABC, CorrelationMixin):
             event,
             metadata=metadata,
             correlation_id=request.correlation_id,
+            trace_id=metadata.get("trace_id"),
         )
         metadata.setdefault("codec", (request.codec or self.config.codec).value)
         metadata.setdefault("compression", (request.compression or self.config.compression).value)
@@ -133,6 +134,8 @@ class BaseAetherBus(ABC, CorrelationMixin):
             raise ValueError(f"Missing topic during {stage}")
         if not validated.correlation_id:
             raise ValueError(f"Missing correlation_id during {stage}")
+        if not validated.trace_id:
+            raise ValueError(f"Missing trace_id during {stage}")
         return validated
 
     def write(self, topic: str, payload: Any) -> str:

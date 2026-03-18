@@ -1,5 +1,7 @@
 import time
 import uuid
+
+from src.backend.genesis_core.protocol.correlation import CorrelationPolicy
 from dataclasses import asdict, dataclass
 from typing import Any, Dict
 
@@ -31,8 +33,15 @@ class GovernanceCore:
         resource: str,
         payload: Dict[str, Any] | None = None,
         dry_run: bool = False,
+        correlation_metadata: Dict[str, Any] | None = None,
     ) -> GovernanceDecision:
         payload = payload or {}
+        correlation = CorrelationPolicy.build(
+            correlation_id=(correlation_metadata or {}).get("correlation_id") or payload.get("correlation_id"),
+            causation_id=(correlation_metadata or {}).get("causation_id") or payload.get("causation_id"),
+            trace_id=(correlation_metadata or {}).get("trace_id") or payload.get("trace_id"),
+            fallback=action,
+        )
         tier = RiskTiering.classify(action, payload)
 
         context = {
@@ -48,7 +57,7 @@ class GovernanceCore:
 
         if policy.effect == "DENY":
             decision = GovernanceDecision(status="DENIED", risk_tier=tier, reason=reason, recommendation="suspend")
-            self._record(f"governance_denied{mode_suffix}", action, resource, decision, policy)
+            self._record(f"governance_denied{mode_suffix}", action, resource, decision, policy, correlation)
             return decision
 
         if policy.effect == "REQUIRE_APPROVAL":
@@ -59,7 +68,7 @@ class GovernanceCore:
                     reason=reason,
                     ticket_id="DRY-RUN",
                 )
-                self._record(f"governance_pending_approval{mode_suffix}", action, resource, decision, policy)
+                self._record(f"governance_pending_approval{mode_suffix}", action, resource, decision, policy, correlation)
                 return decision
 
             ticket = ApprovalTicket(
@@ -77,11 +86,11 @@ class GovernanceCore:
                 reason=reason,
                 ticket_id=ticket.ticket_id,
             )
-            self._record("governance_pending_approval", action, resource, decision, policy)
+            self._record("governance_pending_approval", action, resource, decision, policy, correlation)
             return decision
 
         decision = GovernanceDecision(status="ALLOWED", risk_tier=tier, reason=reason)
-        self._record(f"governance_allowed{mode_suffix}", action, resource, decision, policy)
+        self._record(f"governance_allowed{mode_suffix}", action, resource, decision, policy, correlation)
         return decision
 
     def recommend_recovery(self, event: Dict[str, Any]) -> Dict[str, str]:
@@ -94,7 +103,7 @@ class GovernanceCore:
             recommendation = {"mode": "suspend", "reason": "Safety-first manual inspection"}
 
         if self.ledger:
-            self.ledger.append_record(payload={"type": "governance_recovery_recommendation", **recommendation}, actor="governance")
+            self.ledger.append_record(payload={"type": "governance_recovery_recommendation", **recommendation}, actor="governance", correlation=CorrelationPolicy.build(fallback="governance_recovery_recommendation"))
         return recommendation
 
     def _record(
@@ -104,6 +113,7 @@ class GovernanceCore:
         resource: str,
         decision: GovernanceDecision,
         policy: PolicyResult,
+        correlation: Dict[str, Any],
     ) -> None:
         if not self.ledger:
             return
@@ -119,7 +129,9 @@ class GovernanceCore:
                     "mode": policy.mode,
                 },
                 "timestamp": time.time(),
+                "correlation": correlation,
             },
             actor="governance",
             intent_id=decision.ticket_id,
+            correlation=correlation,
         )
