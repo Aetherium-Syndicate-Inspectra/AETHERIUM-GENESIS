@@ -18,7 +18,7 @@ class LifecycleManager:
     """
     The Conductor of the Bio-Digital Organism.
     Manages the lifecycle of agents, the neural bus, and the heartbeat of the system.
-    Transitioned to AetherBusExtreme (Web-Native).
+    Uses the configured canonical bus runtime selected by BusFactory.
     """
     def __init__(self):
         self.bus = BusFactory.get_bus()
@@ -41,7 +41,7 @@ class LifecycleManager:
         await self.bus.subscribe("lifecycle_manager", self._on_bus_event)
 
         self.running = True
-        logger.info("✨ [Lifecycle] System Awakened (Web-Native). Ready to exist.")
+        logger.info("Lifecycle manager started with configured bus runtime.")
 
     async def _on_bus_event(self, event: AetherEvent):
         """Routes incoming AetherEvents back to SystemIntent logic if needed."""
@@ -142,5 +142,5 @@ class LifecycleManager:
         return {
             "state": "AWAKENED" if self.running else "NIRODHA",
             "agents": ["ValidatorAgent", "AgioSage"],
-            "bus": "AetherBusExtreme"
+            "bus": self.bus.__class__.__name__
         }

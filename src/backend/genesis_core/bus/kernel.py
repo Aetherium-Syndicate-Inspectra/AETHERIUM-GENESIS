@@ -10,9 +10,8 @@ logger = logging.getLogger("AetherBus")
 
 class AetherBus:
     """
-    ระบบประสาทส่วนกลาง (Central Nervous System)
-    ทำงานแบบ Asynchronous Event-Driven ตามสถาปัตยกรรม AetherBusExtreme.
-    (Legacy Kernel Wrapper for Web-Native Simulation)
+    Legacy compatibility wrapper for intent routing on top of the configured bus runtime.
+    Deprecated as a primary runtime entrypoint; retain only for protocol compatibility.
     """
     def __init__(self):
         self._bus = BusFactory.get_bus()
@@ -43,7 +42,7 @@ class AetherBus:
                 callback(payload)
 
         asyncio.create_task(self._bus.subscribe(str(intent_type.value), _wrapper))
-        logger.info(f"Synapse connected for signal: {intent_type.value}")
+        logger.info(f"Compatibility subscription registered for signal: {intent_type.value}")
 
     async def publish(self, intent: IntentVector):
         """ส่งเจตจำนงเข้าสู่ระบบ"""
@@ -72,10 +71,10 @@ class AetherBus:
         """เริ่มระบบประสาท"""
         self._running = True
         await self._bus.connect()
-        logger.info("AetherBus (Extreme Bridge) is now RESONATING...")
+        logger.info("AetherBus kernel compatibility bridge started.")
 
     async def stop(self):
         """ดับระบบ (Nirodha)"""
         self._running = False
         await self._bus.close()
-        logger.info("Entering NIRODHA state...")
+        logger.info("AetherBus kernel compatibility bridge stopped.")

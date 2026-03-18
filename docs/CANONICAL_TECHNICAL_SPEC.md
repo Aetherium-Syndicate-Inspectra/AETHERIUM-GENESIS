@@ -56,9 +56,9 @@ The platform goal is deterministic, inspectable, and replayable operation across
 
 ### 4.3 Bus (AetherBus)
 
-- **Primary modules:** `src/backend/genesis_core/bus/extreme.py`, `src/backend/genesis_core/protocol/schemas.py`, `src/backend/genesis_core/bus/contracts/formation.schema.json`.
-- **Responsibilities:** event publishing/subscription, targeted/broadcast dispatch, global listeners for observability.
-- **Boundary rule:** cross-subsystem communication uses explicit event envelopes and typed schemas.
+- **Primary modules:** `src/backend/genesis_core/bus/base.py`, `src/backend/genesis_core/bus/contracts.py`, `src/backend/genesis_core/bus/tachyon.py`, `src/backend/genesis_core/bus/factory.py`, `src/backend/genesis_core/protocol/schemas.py`.
+- **Responsibilities:** event publishing/subscription, ack/error handling, codec selection, compression metadata, correlation propagation, and internal/external transport bridging.
+- **Boundary rule:** cross-subsystem communication uses explicit event envelopes and typed schemas. Legacy paths remain compatibility-only and must not be the default runtime.
 
 ### 4.4 Hands (Execution/Vessels)
 
@@ -107,6 +107,7 @@ The platform goal is deterministic, inspectable, and replayable operation across
 
 - `AetherEvent` is the canonical transport envelope for state, intent, manifestation, and error signals.
 - `AetherEventType` defines lifecycle/control events (`intent_detected`, `manifestation`, `degradation`, `handshake`, etc.).
+- Bus runtime metadata must include correlation propagation, codec selection, compression hints, and stable topic routing when events cross subsystem boundaries.
 
 ### 6.3 Entropy and Memory Protocol
 
@@ -136,6 +137,16 @@ The platform goal is deterministic, inspectable, and replayable operation across
   - metrics loop and health broadcast
 - Execution path must preserve ordering:
   - validated input -> governed decision -> action pathway -> memory commit -> outward manifestation.
+
+
+## 8.1 Canonical Bus Runtime Selection
+
+- Default runtime selection is environment/config driven through `BusFactory`.
+- Canonical default: `BUS_IMPLEMENTATION=tachyon`.
+- Canonical internal endpoint: `tcp://127.0.0.1:5555` (ZeroMQ).
+- Canonical external endpoint: `ws://127.0.0.1:5556/ws` (WebSocket bridge).
+- Canonical defaults: `BUS_CODEC=msgpack`, `BUS_COMPRESSION=none`, `BUS_TIMEOUT_MS=2000`.
+- Legacy `AetherBusExtreme` and `kernel.py` remain compatibility layers with deprecation notes.
 
 ## 9. Memory Model
 
