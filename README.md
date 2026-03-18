@@ -24,7 +24,7 @@
 ## 🧠 แนวคิดหลัก: จาก AI Agents สู่ "ผู้สั่นพ้อง" (Resonators)
 
 เราได้เปลี่ยนผ่านจากระบบ Agent แบบเดิม สู่ **Resonance Architecture**:
-1.  **AetherBus Tachyon**: เส้นทางสั่นพ้องปัญญาที่ลดความหน่วงสู่ระดับไมโครวินาที
+1.  **AetherBus-Tachyon**: canonical system bus สำหรับ internal ZeroMQ และ external WebSocket bridge พร้อม V3 envelope tracing
 2.  **Primary Resonators**: ตำแหน่งผู้สั่นพ้องหลัก 12 ตำแหน่ง (Visionary, Technical, Governance, ฯลฯ)
 3.  **Negative Latency**: การทำนายและประมวลผลล่วงหน้า (Ghost Workers) เพื่อให้ AI คิดก่อนที่มนุษย์จะขยับ
 
@@ -36,8 +36,9 @@
 `Input (Human Intent) → LogenesisEngine (Formator) → AetherBus (Resonance) → ValidatorAgent (Audit) → AgioSage (Cognitive) → Output (Manifestation)`
 
 ### เทคโนโลยีหลัก:
-- **FastAPI & WebSockets**: ระบบสื่อสารแบบ Real-time (20Hz Heartbeat)
-- **HyperSonicBus**: ระบบส่งข้อมูลความเร็วสูงผ่าน Shared Memory
+- **FastAPI & WebSockets**: ระบบสื่อสารแบบ Real-time และ bridge สำหรับ manifestation/control plane
+- **AetherBus-Tachyon**: ZeroMQ + WebSocket bridge สำหรับ canonical system bus runtime
+- **HyperSonicBus**: legacy/shared-memory fast path ที่ยังคงอยู่เพื่อ compatibility เฉพาะบางกรณี
 - **Akashic Records**: บันทึกความจำถาวรแบบ Immutable Ledger (data/akashic_records.json)
 - **PWA (Progressive Web App)**: รองรับการติดตั้งและใช้งานเสมือนแอปพื้นฐานบนมือถือและเดสก์ท็อป
 
@@ -122,6 +123,17 @@ erDiagram
 ---
 
 
+## 🚌 Canonical Bus Runtime (Phase 1 Integration)
+
+AETHERIUM-GENESIS ใช้ **AetherBus-Tachyon** เป็น canonical system bus path โดยกำหนดให้ message ทุกตัวที่ข้าม subsystem ต้องวิ่งผ่าน **V3 envelope (`AetherEvent`)** พร้อม `correlation_id`, codec metadata, compression metadata และ topic routing ที่ตรวจสอบได้
+
+- **Internal transport:** ZeroMQ (`tcp://127.0.0.1:5555`) สำหรับ backend/runtime microservices
+- **External transport:** WebSocket bridge (`ws://127.0.0.1:5556/ws`) สำหรับ UI / dashboard / operator tools
+- **Runtime selection:** ควบคุมผ่าน environment เช่น `BUS_IMPLEMENTATION=tachyon`, `BUS_CODEC=msgpack`, `BUS_COMPRESSION=none`, `BUS_TIMEOUT_MS=2000`
+- **Legacy policy:** `extreme.py` และ `kernel.py` ถูกลดบทบาทเป็น compatibility layer พร้อม deprecation note และไม่ใช่ default runtime อีกต่อไป
+
+ดูรายละเอียด integration contract ได้ที่ **[docs/AETHERBUS_TACHYON_INTEGRATION.md](docs/AETHERBUS_TACHYON_INTEGRATION.md)**
+
 ## 🧭 Governance Runtime + Memory Fabric (Engineering Layer)
 
 เพื่อยกระดับจากแนวคิดเชิงวิสัยทัศน์ไปสู่ execution จริง ระบบได้เพิ่ม subsystem แบบ first-class ดังนี้:
@@ -179,6 +191,17 @@ export PYTHONPATH=$PYTHONPATH:.
 ```
 
 ### 2. ปลุกระบบ (Awaken)
+กำหนด canonical bus runtime ก่อนเริ่มระบบ:
+
+```bash
+export BUS_IMPLEMENTATION=tachyon
+export BUS_INTERNAL_ENDPOINT=tcp://127.0.0.1:5555
+export BUS_EXTERNAL_ENDPOINT=ws://127.0.0.1:5556/ws
+export BUS_CODEC=msgpack
+export BUS_COMPRESSION=none
+export BUS_TIMEOUT_MS=2000
+```
+
 คุณสามารถเลือกโหมดการรันได้ดังนี้:
 
 **โหมดนักพัฒนา / เว็บ (แนะนำ)**

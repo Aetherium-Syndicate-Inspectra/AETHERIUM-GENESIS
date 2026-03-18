@@ -34,7 +34,6 @@ from src.backend.routers.metrics import router as metrics_router
 from src.backend.routers.metrics import MetricCollector
 from src.backend.routers.entropy import router as entropy_router
 from src.backend.routers.governance import router as governance_router
-from src.backend.genesis_core.bus.extreme import AetherBusExtreme
 from src.backend.security.key_manager import KeyManager
 from src.backend.genesis_core.entropy import AkashicTreasury, EntropyReplayStudio, EntropyValidator
 
@@ -135,9 +134,8 @@ async def startup_event():
     # Awakening: Start the Bio-Digital Organism
     await engine.startup()
 
-    # Initialize AetherBusExtreme (V2 Protocol)
-    # We attach it to app.state for the API Router to use
-    aether_bus = AetherBusExtreme()
+    # Initialize canonical bus runtime selected by configuration/environment.
+    aether_bus = BusFactory.get_bus()
     await aether_bus.connect()
     app.state.aether_bus = aether_bus
     app.state.engine = engine # Expose engine to router

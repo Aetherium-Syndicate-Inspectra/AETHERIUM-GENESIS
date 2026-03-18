@@ -1,0 +1,66 @@
+# AetherBus-Tachyon Integration Guide
+
+## Purpose
+
+This document defines the canonical Phase 1 bus path for AETHERIUM-GENESIS. The platform now treats **AetherBus-Tachyon** as the preferred runtime transport and keeps legacy in-process bus implementations only as compatibility layers.
+
+Canonical path:
+
+`Intent -> V3 Envelope -> Governance-aware Bus Publish -> Tachyon Internal ZeroMQ -> Tachyon WebSocket Bridge -> Manifestation`
+
+## Runtime topology
+
+### Internal microservices
+
+- Transport: **ZeroMQ PUB/SUB**
+- Default endpoint: `tcp://127.0.0.1:5555`
+- Use case: internal backend components, lifecycle orchestration, governance telemetry, memory events
+
+### External / UI consumers
+
+- Transport: **WebSocket bridge**
+- Default endpoint: `ws://127.0.0.1:5556/ws`
+- Use case: dashboards, manifestation surfaces, operator consoles, replay tooling
+
+## Configuration contract
+
+The runtime bus implementation is selected by environment variables.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `BUS_IMPLEMENTATION` | `tachyon` | Runtime selector. Supported values: `tachyon`, `extreme`, `legacy`. |
+| `BUS_INTERNAL_ENDPOINT` | `tcp://127.0.0.1:5555` | Internal ZeroMQ endpoint. |
+| `BUS_EXTERNAL_ENDPOINT` | `ws://127.0.0.1:5556/ws` | External WebSocket bridge endpoint. |
+| `BUS_CODEC` | `msgpack` | Envelope payload codec (`msgpack` or `json`). |
+| `BUS_COMPRESSION` | `none` | Compression metadata for transport coordination. |
+| `BUS_TIMEOUT_MS` | `2000` | Publish/receive timeout budget. |
+| `BUS_RECONNECT_INITIAL_DELAY_MS` | `250` | First reconnect delay. |
+| `BUS_RECONNECT_MAX_DELAY_MS` | `5000` | Maximum reconnect backoff. |
+| `BUS_RECONNECT_MAX_ATTEMPTS` | `10` | Maximum reconnect attempts before escalation. |
+
+## Envelope requirements
+
+Every cross-subsystem payload must travel inside `AetherEvent` with:
+
+- `extensions.correlation_id` present at origin
+- `extensions.bus_metadata.codec`
+- `extensions.bus_metadata.compression`
+- stable `topic` metadata when routing semantics matter
+
+This contract keeps deterministic replay and distributed tracing available to Governance Core, Akashic Memory, and manifestation surfaces.
+
+## Compatibility layer policy
+
+- `src/backend/genesis_core/bus/extreme.py` is retained only for local compatibility and tests.
+- `src/backend/genesis_core/bus/kernel.py` is retained only as a compatibility wrapper for older intent-routing call sites.
+- New runtime work must target `BusFactory -> AetherBusTachyon`.
+
+## Integration notes for adjacent repositories
+
+### PRGX-AG
+
+Governance decisions should publish approval, block, escalation, and override outcomes through the canonical bus path so that policy enforcement remains inspectable.
+
+### Aetherium-Manifest
+
+The UI should subscribe through the WebSocket bridge and render only backend-authored directives. Frontend state must not become an alternate semantic source.
