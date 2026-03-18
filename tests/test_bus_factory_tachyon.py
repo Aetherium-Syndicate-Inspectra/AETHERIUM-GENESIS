@@ -65,6 +65,8 @@ async def test_tachyon_publish_request_propagates_correlation_metadata(monkeypat
     assert ack is not None
     assert ack.correlation_id == "corr-123"
     assert received[0].extensions["correlation_id"] == "corr-123"
+    assert received[0].trace_id == "corr-123"
+    assert received[0].extensions["trace_id"] == "corr-123"
     bus_metadata = received[0].extensions["bus_metadata"]
     assert bus_metadata["codec"] == "json"
     assert bus_metadata["compression"] == "none"

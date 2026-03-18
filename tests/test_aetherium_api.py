@@ -40,10 +40,12 @@ def test_aetherium_flow():
             # Expect Handshake
             msg = websocket.receive_json()
             assert msg["type"] == "handshake"
+            assert msg["directive_state"]["correlation_id"] == session_id
+            assert msg["directive_state"]["trace_id"] == session_id
             print("Handshake received")
 
             # Send Intent
-            websocket.send_json({"text": "Hello Aether"})
+            websocket.send_json({"text": "Hello Aether", "correlation_id": "corr-client-1", "trace_id": "trace-client-1"})
 
             # Expect Stream
             received_types = []
@@ -54,7 +56,12 @@ def test_aetherium_flow():
                     received_types.append(msg["type"])
                     print(f"Received: {msg['type']}")
 
+                    if msg["type"] == "intent_detected":
+                        assert msg["directive_state"]["correlation_id"] == "corr-client-1"
+                        assert msg["directive_state"]["trace_id"] == "trace-client-1"
                     if msg["type"] == "manifestation":
+                        assert msg["directive_state"]["correlation_id"] == "corr-client-1"
+                        assert msg["directive_state"]["trace_id"] == "trace-client-1"
                         break
                     if msg["type"] == "degradation":
                         break
@@ -63,4 +70,4 @@ def test_aetherium_flow():
                     break
 
             assert "intent_detected" in received_types
-            assert "state_update" in received_types
+            assert any(event_type in received_types for event_type in ("manifestation", "degradation"))

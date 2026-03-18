@@ -34,3 +34,14 @@ def test_bus_validation_rejects_non_v3_envelope():
     else:
         raise AssertionError("Expected validation failure for non-V3 envelope")
 
+
+
+from src.backend.genesis_core.protocol.correlation import CorrelationPolicy
+
+
+def test_correlation_policy_builds_trace_metadata():
+    metadata = CorrelationPolicy.build(session_id="session-abc")
+
+    assert metadata["correlation_id"] == "session-abc"
+    assert metadata["trace_id"] == "session-abc"
+    assert metadata["causation_id"] is None

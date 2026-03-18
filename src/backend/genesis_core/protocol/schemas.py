@@ -5,6 +5,8 @@ from enum import Enum
 from typing import Any, Dict, Optional, Union
 from uuid import uuid4
 
+from src.backend.genesis_core.protocol.correlation import CorrelationPolicy
+
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
@@ -108,8 +110,9 @@ class AetherEvent(BaseModel):
     protocol_version: str = "2026.03"
     envelope_id: str = Field(default_factory=lambda: str(uuid4()))
     type: AetherEventType
-    correlation_id: str = Field(default_factory=lambda: str(uuid4()))
+    correlation_id: str = Field(default_factory=lambda: CorrelationPolicy.new_id("corr"))
     causation_id: Optional[str] = None
+    trace_id: str = Field(default_factory=lambda: CorrelationPolicy.new_id("trace"))
     origin: EnvelopeEndpoint
     target: EnvelopeEndpoint
     topic: str
@@ -139,7 +142,8 @@ class AetherEvent(BaseModel):
         session_id = upgraded.get("session_id")
         legacy_topic = (upgraded.get("extensions") or {}).get("topic")
         upgraded.setdefault("topic", legacy_topic or session_id or upgraded.get("type") or "system.broadcast")
-        upgraded.setdefault("correlation_id", (upgraded.get("extensions") or {}).get("correlation_id") or session_id or str(uuid4()))
+        upgraded.setdefault("correlation_id", (upgraded.get("extensions") or {}).get("correlation_id") or session_id or CorrelationPolicy.new_id("corr"))
+        upgraded.setdefault("trace_id", (upgraded.get("extensions") or {}).get("trace_id") or upgraded.get("correlation_id"))
 
         if "origin" not in upgraded:
             upgraded["origin"] = {
@@ -194,7 +198,18 @@ class AetherEvent(BaseModel):
         if self.error is None and self.payload.get("error") is not None:
             self.error = str(self.payload["error"])
 
+        correlation_metadata = CorrelationPolicy.build(
+            correlation_id=self.correlation_id,
+            causation_id=self.causation_id,
+            trace_id=self.trace_id,
+            session_id=self.session_id,
+        )
+        self.correlation_id = correlation_metadata["correlation_id"] or self.correlation_id
+        self.causation_id = correlation_metadata["causation_id"]
+        self.trace_id = correlation_metadata["trace_id"] or self.trace_id
         self.extensions.setdefault("correlation_id", self.correlation_id)
+        self.extensions.setdefault("causation_id", self.causation_id)
+        self.extensions.setdefault("trace_id", self.trace_id)
         self.extensions.setdefault("topic", self.topic)
         self.extensions.setdefault("governance", self.governance.model_dump(mode="json"))
         self.extensions.setdefault("memory", self.memory.model_dump(mode="json"))

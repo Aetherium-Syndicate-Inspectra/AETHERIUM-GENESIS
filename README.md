@@ -134,6 +134,24 @@ AETHERIUM-GENESIS ใช้ **AetherBus-Tachyon** เป็น canonical system 
 
 ดูรายละเอียด integration contract ได้ที่ **[docs/AETHERBUS_TACHYON_INTEGRATION.md](docs/AETHERBUS_TACHYON_INTEGRATION.md)**
 
+### Replay Trace Contract (Phase 1)
+
+ทุก governed cycle ต้องเริ่มสร้าง correlation metadata ตั้งแต่ ingress แรกและคงไว้ตลอดเส้นทาง `intent -> bus -> governance -> memory -> manifestation`:
+
+1. **`correlation_id`** = run identifier หลักของ cycle เดียวกัน
+2. **`causation_id`** = envelope/event ก่อนหน้าที่ก่อให้เกิด event ปัจจุบัน
+3. **`trace_id`** = identifier ระดับ replay/distributed trace ที่ UI, audit tooling และ memory projection ใช้อ้างอิง chain เดียวกัน
+
+แนวทาง implementer สำหรับ replay:
+- API ingress ต้องสร้าง IDs ให้เองเมื่อ client ไม่ส่งมา
+- AetherBus V3 envelope ต้องไม่ drop `correlation_id`, `causation_id`, `trace_id` ระหว่าง publish/subscribe
+- Governance + approval + vessel + memory commit ต้อง persist metadata ชุดเดียวกันลง record canonical format
+- Frontend/WebSocket payload ต้อง render จาก `directive_state` ที่ backend ส่งมาเท่านั้น และต้องอ้างอิง correlation chain เดียวกัน
+
+เอกสาร audit/memory เพิ่มเติม:
+- [docs/AETHERBUS_TACHYON_INTEGRATION.md](docs/AETHERBUS_TACHYON_INTEGRATION.md)
+- [docs/directive_envelope_standard.md](docs/directive_envelope_standard.md)
+
 ## 🧭 Governance Runtime + Memory Fabric (Engineering Layer)
 
 เพื่อยกระดับจากแนวคิดเชิงวิสัยทัศน์ไปสู่ execution จริง ระบบได้เพิ่ม subsystem แบบ first-class ดังนี้:
