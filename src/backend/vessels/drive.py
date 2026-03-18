@@ -1,21 +1,24 @@
-from typing import Any, Dict
-
-from src.backend.vessels.base import ActionPreview, ExecutionVessel
+from src.backend.genesis_core.protocol.schemas import AetherEvent
+from src.backend.vessels.base import ActionPreview, DirectivePayload, ExecutionVessel
 
 
 class DriveVessel(ExecutionVessel):
-    """Draft/update abstraction for remote drive providers."""
+    """Adapter boundary for remote drive providers."""
 
     def __init__(self):
         super().__init__(name="drive")
 
-    def preview(self, action: str, params: Dict[str, Any]) -> ActionPreview:
+    def _preview(self, envelope: AetherEvent, payload: DirectivePayload) -> ActionPreview:
         return ActionPreview(
-            plan=f"Drive action {action} on {params.get('doc_id', 'new_doc')}",
-            diff=params.get("content", "")[:120],
+            plan=f"Drive adapter action {payload.action} on {payload.params.get('doc_id', 'new_doc')}",
+            diff=str(payload.params.get("content", ""))[:120],
             tools=["drive.api"],
-            evidence={"provider": params.get("provider", "generic")},
+            evidence={"provider": payload.params.get("provider", "generic"), "topic": envelope.topic},
         )
 
-    def execute(self, action: str, params: Dict[str, Any]) -> Dict[str, Any]:
-        return {"status": "draft_only", "action": action, "message": "Drive execution adapter pending provider binding"}
+    def _execute(self, envelope: AetherEvent, payload: DirectivePayload) -> dict:
+        return {
+            "status": "draft_only",
+            "action": payload.action,
+            "message": "Drive adapter pending provider binding",
+        }

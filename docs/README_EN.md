@@ -36,12 +36,26 @@ The system coordinates through the **Sopan Protocol**:
 `Input (Human Intent) → LogenesisEngine (Formator) → AetherBus (Resonance) → ValidatorAgent (Audit) → AgioSage (Cognitive) → Output (Manifestation)`
 
 ### Key Technologies:
-- **FastAPI & WebSockets**: Real-time communication system (20Hz Heartbeat).
-- **HyperSonicBus**: High-speed data transfer via Shared Memory.
-- **Akashic Records**: Permanent memory via an Immutable Ledger (`data/akashic_records.json`).
-- **PWA (Progressive Web App)**: Mobile-first, installable interface for native-like experience.
+- **FastAPI & WebSockets**: Real-time ingress/manifestation surfaces governed by backend directives.
+- **AetherBus-Tachyon**: Canonical ZeroMQ + WebSocket bridge for V3 envelope transport.
+- **Akashic Records**: Permanent memory via an immutable ledger (`data/akashic_records.json`).
+- **PWA (Progressive Web App)**: A manifestation client that renders backend-authored directives only.
 
 ---
+
+## Directive-Only Vessel Contract
+
+- Vessels under `src/backend/vessels/` must receive a canonical `AetherEvent` envelope, not loose `action + params` pairs.
+- Executable directives must include `payload.action`, `payload.params`, `payload.execution_scope`, `payload.actor`, and traceable envelope metadata.
+- Vessel adapters must reject execution unless governance metadata is validated and the decision is explicitly allowed.
+- Every execution outcome is written to Akashic memory before the adapter returns to the caller.
+
+## Least-Privilege Rules
+
+- Keep vessel code limited to external-system adapter logic; do not place reasoning, approval, or business policy inside the adapter.
+- Declare the minimum required capability in `execution_scope.permissions` and never widen scope inside the vessel.
+- Do not hardcode credentials. Use `.env` / secret-manager references such as `${ENV_VAR}`, `env:NAME`, or `secret://path`.
+- Preserve `correlation_id`, `trace_id`, actor identity, and source identity end-to-end for replay and auditability.
 
 ## 🚀 Running the System
 

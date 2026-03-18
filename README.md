@@ -152,6 +152,26 @@ AETHERIUM-GENESIS ใช้ **AetherBus-Tachyon** เป็น canonical system 
 - [docs/AETHERBUS_TACHYON_INTEGRATION.md](docs/AETHERBUS_TACHYON_INTEGRATION.md)
 - [docs/directive_envelope_standard.md](docs/directive_envelope_standard.md)
 
+### Least-Privilege + Directive-Only Vessel Contract
+
+**กฎ least-privilege สำหรับ vessels**
+- Vessels เป็นเพียง adapter ไปยังระบบภายนอกเท่านั้น และต้องไม่ฝัง reasoning, policy decision, หรือ business workflow ภายใน adapter
+- ทุกคำสั่งต้องมาจาก backend-authored directive envelope ที่ผ่าน governance แล้วเท่านั้น
+- `execution_scope.permissions` ต้องประกาศ capability ที่จำเป็นขั้นต่ำสุดสำหรับ action นั้น และ adapter ต้องไม่ขยายสิทธิเอง
+- ต้องมี `actor.id`, `actor.type`, `origin.service`, `correlation_id`, และ `trace_id` ทุกครั้งเพื่อรองรับ audit/replay
+- หาก directive มี credential field เช่น `api_key`, `token`, `password`, `client_secret`, `access_key` ค่าต้องเป็น reference ไปยัง `.env`/secret manager เท่านั้น ห้ามเป็น plaintext
+
+**ตัวอย่าง payload contract**
+```json
+{
+  "action": "write_file",
+  "params": {"path": "notes/audit.md", "content": "..."},
+  "execution_scope": {"system": "workspace", "permissions": ["workspace.write"]},
+  "actor": {"id": "user-123", "type": "human"},
+  "metadata": {"directive_class": "operator_request"}
+}
+```
+
 ## 🧭 Governance Runtime + Memory Fabric (Engineering Layer)
 
 Canonical runtime gate ปัจจุบันคือ `API/WebSocket ingress -> Directive Runtime -> Governance Core -> Approval Router (ถ้าจำเป็น) -> Lifecycle/Planning authorization -> Memory commit -> Manifestation` และไม่อนุญาตให้ route จาก ingress ไปยัง planner/vessel โดยตรงอีกต่อไป
@@ -166,7 +186,10 @@ Canonical runtime gate ปัจจุบันคือ `API/WebSocket ingress 
   - รองรับ recommendation: **quarantine / suspend / rollback**
 - **Execution Vessel Layer** (`src/backend/vessels/`)
   - `WorkspaceVessel`, `DriveVessel`, `DatabaseVessel`, `SlackVessel`
-  - แนวคิดการทำงาน: **LLM วางแผน → Vessel ลงมือทำ → Governance อนุมัติ → Akashic บันทึก**
+  - ใช้ canonical `AetherEvent` directive envelope เท่านั้น: `action`, `params`, `execution_scope`, `actor`, `metadata` ต้องอยู่ใน `payload`
+  - Base class จะบังคับ preconditions ก่อน execution: governance decision ที่ validated แล้ว, correlation metadata, actor/source identity และ execution scope
+  - หลัง execute ทุกครั้งจะ append `execution_outcome` ลง Akashic ledger ก่อนคืนผลลัพธ์ให้ caller
+  - secret/credential parameters ต้องอ้างอิงผ่าน `.env` หรือ secret manager (`${ENV_VAR}`, `env:NAME`, `secret://...`) และห้าม hardcode credential ใน directive
 - **Akashic Memory Fabric** (`src/backend/memory/fabric.py`)
   - ใช้ `data/akashic_records.json` เป็น canonical event stream
   - แตก projection เป็น:
@@ -258,21 +281,17 @@ pytest -q tests/test_region_extractor.py
 - **Governed Execution Ledger Views**: สร้าง projection/query API สำหรับตรวจสอบหนึ่ง correlation chain ตั้งแต่ intent ถึง memory commit แบบพร้อมใช้งานในการ audit
 - **Cross-Repository Tachyon Contract Tests**: เพิ่มชุด compatibility tests ระหว่าง AETHERIUM-GENESIS, PRGX-AG และ AetherBus-Tachyon เพื่อกัน schema drift
 - **Directive Replay Export**: รองรับ export/import envelope chain เป็น artifact เดียวสำหรับ incident review และ deterministic replay
+- **Least-Privilege Scope Catalog**: ทำ registry กลางของ `execution_scope.permissions` สำหรับ vessels เพื่อบังคับ capability mapping แบบตรวจสอบได้
 - **Approval Escalation Surfaces**: เพิ่ม operator queue และ escalation policies สำหรับ Tier 2/3 actions ผ่าน kernel gate
 - **Manifestation Read Models**: สร้าง read-optimized backend projections ให้ frontend render directive/state ได้โดยไม่ตีความ business logic เอง
-- **Bus Resilience Drills**: เพิ่ม reconnect/failover/poison-packet simulation สำหรับ ZeroMQ/WebSocket bridge ก่อน production rollout
-- **Memory Integrity Sentinel**: งานตรวจความครบถ้วน hash-chain + anomaly detection ของ ledger/projections พร้อม alert
-- **Observability Pack (OTel-first)**: เพิ่ม trace/span และ governance tags มาตรฐานเพื่อให้ root-cause ได้เร็วขึ้น
 
-#### 🇬🇧 New feature and expansion proposals (English)
-- **Governed Execution Ledger Views** to query a single correlation chain from intent through memory commit for audit operations.
-- **Cross-Repository Tachyon Contract Tests** to prevent schema drift across AETHERIUM-GENESIS, PRGX-AG, and AetherBus-Tachyon.
-- **Directive Replay Export** to package envelope chains as portable artifacts for incident review and deterministic replay.
-- **Approval Escalation Surfaces** for Tier 2/3 operator queues and escalation policies at the governance kernel boundary.
-- **Manifestation Read Models** so the frontend can render backend-authored directives without re-implementing decision logic.
-- **Bus Resilience Drills** covering reconnect, failover, and poison-packet scenarios for the ZeroMQ/WebSocket bridge.
-- **Memory Integrity Sentinel** to validate hash-chain continuity and detect ledger/projection anomalies with alerting.
-- **Observability Pack (OTel-first)** introducing standardized traces/spans and governance tags for faster incident root-cause analysis.
+#### 🇬🇧 Proposed Next Functions / Extensions (English)
+- **Governed Execution Ledger Views**: Add queryable projections for a single correlation chain from intent ingress through memory commit.
+- **Cross-Repository Tachyon Contract Tests**: Add compatibility suites across AETHERIUM-GENESIS, PRGX-AG, and AetherBus-Tachyon to prevent envelope/schema drift.
+- **Directive Replay Export**: Support export/import of a full envelope chain artifact for incident review and deterministic replay.
+- **Least-Privilege Scope Catalog**: Introduce a canonical registry for `execution_scope.permissions` so vessel capabilities remain explicit and auditable.
+- **Approval Escalation Surfaces**: Add operator queues and escalation policies for Tier 2/3 actions at the governance kernel boundary.
+- **Manifestation Read Models**: Provide read-optimized backend projections so the frontend renders directive/state output without re-implementing business logic.
 
 ---
 

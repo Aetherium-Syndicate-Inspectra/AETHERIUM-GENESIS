@@ -1,7 +1,7 @@
 import os
-from typing import Any, Dict
 
-from src.backend.vessels.base import ActionPreview, ExecutionVessel
+from src.backend.genesis_core.protocol.schemas import AetherEvent
+from src.backend.vessels.base import ActionPreview, DirectivePayload, ExecutionVessel
 
 
 class WorkspaceVessel(ExecutionVessel):
@@ -16,24 +16,29 @@ class WorkspaceVessel(ExecutionVessel):
             raise PermissionError("Path escapes workspace sandbox")
         return resolved
 
-    def preview(self, action: str, params: Dict[str, Any]) -> ActionPreview:
-        path = params.get("path", "")
-        if action == "write_file":
+    def _preview(self, envelope: AetherEvent, payload: DirectivePayload) -> ActionPreview:
+        path = payload.params.get("path", "")
+        if payload.action == "write_file":
             return ActionPreview(
                 plan=f"Write file at {path}",
-                diff=f"+ {params.get('content', '')[:80]}",
+                diff=f"+ {str(payload.params.get('content', ''))[:80]}",
                 tools=["workspace.fs"],
-                evidence={"path": path},
+                evidence={"path": path, "topic": envelope.topic},
             )
-        return ActionPreview(plan=f"Run {action}", diff="", tools=["workspace.fs"], evidence={})
+        return ActionPreview(
+            plan=f"Run workspace adapter action {payload.action}",
+            diff="",
+            tools=["workspace.fs"],
+            evidence={"path": path, "topic": envelope.topic},
+        )
 
-    def execute(self, action: str, params: Dict[str, Any]) -> Dict[str, Any]:
-        target = self._safe_path(params.get("path", ""))
-        if action == "write_file":
+    def _execute(self, envelope: AetherEvent, payload: DirectivePayload) -> dict:
+        target = self._safe_path(payload.params.get("path", ""))
+        if payload.action == "write_file":
             with open(target, "w", encoding="utf-8") as handle:
-                handle.write(params.get("content", ""))
+                handle.write(payload.params.get("content", ""))
             return {"status": "ok", "path": target}
-        if action == "read_file":
+        if payload.action == "read_file":
             with open(target, "r", encoding="utf-8") as handle:
-                return {"status": "ok", "content": handle.read()}
-        raise ValueError(f"Unsupported workspace action: {action}")
+                return {"status": "ok", "content": handle.read(), "path": target}
+        raise ValueError(f"Unsupported workspace action: {payload.action}")
