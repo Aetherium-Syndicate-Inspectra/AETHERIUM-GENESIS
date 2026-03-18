@@ -40,3 +40,13 @@ are canonically defined in:
 https://github.com/lnspirafirmaGPK/The-Book-of-Formation-AETHERIUM-GENESIS
 
 This repository operates in conformance with that body of knowledge.
+
+
+## Manifestation Surface Boundary
+
+Frontend surfaces are manifestation clients, not logic engines. The canonical UI contract is the backend-authored manifestation directive carried inside the V3 envelope and exposed over the `/ws/v3/stream` bridge.
+
+- Backend responsibilities: author `directive_state`, `render_state`, `status`, `replay`, and `diagnostics`; preserve `correlation_id` / `trace_id`; set `manifest_version`.
+- Frontend responsibilities: render those fields, display status, expose replay controls, and surface diagnostics.
+- Forbidden on the client: semantic inference, governance reinterpretation, execution-state invention, or correlation rewriting.
+- Demo/sandbox pages under `src/frontend/public/gunui/` remain non-canonical unless explicitly wired to the directive bridge and labeled otherwise.

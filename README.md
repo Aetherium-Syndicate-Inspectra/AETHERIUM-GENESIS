@@ -282,20 +282,20 @@ pytest -q tests/test_region_extractor.py
 ### 4. Future Roadmap / แผนต่อยอดในอนาคต
 
 #### 🇹🇭 ข้อเสนอฟังก์ชัน/แนวทางต่อยอดใหม่ (Thai)
-- **Canonical Replay Stream Index**: เพิ่ม index/query surface สำหรับค้น canonical stream ตาม `correlation_id`, `trace_id`, `topic`, และช่วงเวลา เพื่อให้ deterministic replay ทำงานข้าม subsystem ได้ง่ายขึ้น
-- **Kernel-to-Bus Contract Harness**: สร้าง integration harness สำหรับยืนยันว่า PRGX-AG policy outcomes และ AetherBus-Tachyon envelopes ยังเข้ากันได้ในระดับ schema + transport ก่อน deploy
-- **Projection Read Models for Operators**: เพิ่ม derived views สำหรับ operator console, approval queues, และ incident review โดยไม่แก้ canonical append-only stream
-- **Execution Scope Registry**: สร้าง registry กลางของ `execution_scope.permissions` พร้อม owner, approval tier, และ audit mapping ต่อ vessel
-- **Manifestation Directive Catalog**: นิยาม catalog ของ UI directives ที่ frontend render ได้โดยตรงจาก backend envelope โดยไม่ต้องตีความ semantic ใหม่เอง
-- **Replay Drill Pack**: เพิ่ม scenario packs สำหรับซ้อม replay / rollback ของหนึ่ง intent cycle ตั้งแต่ ingress, governance, execution, memory commit จนถึง manifestation
+- **Tachyon Deployment Profiles**: เพิ่ม deployment profiles สำหรับแยก endpoint/config ของ ZeroMQ + WebSocket bridge ระหว่าง local, staging, และ cross-repository integration
+- **Manifestation Contract Conformance Suite**: เพิ่มชุดทดสอบที่ตรวจว่า frontend ทุกหน้าที่เป็น production path ใช้เฉพาะ `render_state`, `status`, `replay`, `diagnostics`, และ `directive_state` จาก backend
+- **Governed Replay Console**: สร้าง operator console สำหรับ replay/inspect ตาม `correlation_id` พร้อมแสดง governance timeline และ memory continuity จาก canonical stream เดียวกัน
+- **Bus-to-Memory Projection Workers**: เพิ่ม worker แยกสำหรับสร้าง read models จาก Tachyon stream ไปยัง operator/search views โดยไม่แตะ append-only ledger
+- **Approval Outcome Bridge**: เชื่อม approval outcomes จาก PRGX-AG ให้กลายเป็น V3 envelopes มาตรฐานพร้อม policy metadata และ manifest-ready status blocks
+- **Sandbox Isolation Policy**: เพิ่ม policy/route guard สำหรับกัน sandbox visualization pages ออกจาก canonical runtime path และ telemetry ของ production
 
 #### 🇬🇧 Proposed Next Functions / Extensions (English)
-- **Canonical Replay Stream Index**: Add an index/query surface for canonical stream lookups by `correlation_id`, `trace_id`, `topic`, and time window so deterministic replay works cleanly across subsystems.
-- **Kernel-to-Bus Contract Harness**: Add an integration harness that verifies PRGX-AG policy outcomes and AetherBus-Tachyon envelopes remain schema- and transport-compatible before deployment.
-- **Projection Read Models for Operators**: Add derived views for operator consoles, approval queues, and incident review without mutating the canonical append-only stream.
-- **Execution Scope Registry**: Introduce a canonical registry for `execution_scope.permissions` with owner, approval tier, and audit mappings per vessel.
-- **Manifestation Directive Catalog**: Define a catalog of UI directives that the frontend can render directly from backend-authored envelopes without recreating semantic logic on the client.
-- **Replay Drill Pack**: Add scenario packs for replay / rollback drills across one full intent cycle from ingress through governance, execution, memory commit, and manifestation.
+- **Tachyon Deployment Profiles**: Add deployment profiles for local, staging, and cross-repository ZeroMQ/WebSocket bridge endpoints and runtime configuration.
+- **Manifestation Contract Conformance Suite**: Add checks that every production frontend surface consumes only backend-authored `render_state`, `status`, `replay`, `diagnostics`, and `directive_state` fields.
+- **Governed Replay Console**: Build an operator console that replays and inspects one `correlation_id` timeline with governance and memory continuity from the canonical stream.
+- **Bus-to-Memory Projection Workers**: Add workers that derive operator/search read models from the Tachyon stream without mutating the append-only ledger.
+- **Approval Outcome Bridge**: Convert PRGX-AG approval outcomes into standard V3 envelopes with policy metadata and manifestation-ready status blocks.
+- **Sandbox Isolation Policy**: Add route/policy guards that keep sandbox visualization pages out of canonical production runtime and telemetry paths.
 
 ---
 

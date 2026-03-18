@@ -98,6 +98,18 @@ Phase 1 requires a single correlation policy for every V3 envelope crossing subs
 The Tachyon adapter is the canonical transport, but transport alone is not sufficient. Runtime ingress now flows through a central directive runtime that upgrades ingress payloads into `AetherEvent` envelopes, evaluates governance using full envelope context, routes approval when required, emits `governance.decision` / `execution.readiness` events, and only then authorizes lifecycle or vessel processing.
 
 
+
+## Frontend production vs sandbox flow
+
+Phase 1 keeps one canonical manifestation path:
+
+`Backend V3 envelope -> /ws/v3/stream -> backend-authored directive_state/render_state/status/replay/diagnostics -> frontend rendering`
+
+Repository audit summary:
+- `src/frontend/public/dashboard/` is closer to production diagnostics/operator UI because it primarily renders server responses.
+- Multiple pages under `src/frontend/public/gunui/` still contain client-generated animation state, mock vitality logic, or demo-only semantic behavior. These are now explicitly labeled as sandbox / non-canonical paths.
+- Follow-up work should either wire those pages to the canonical directive bridge or keep them isolated from production routes and telemetry.
+
 ## Phase 1 migration notes
 
 - `tachyon` remains the canonical runtime default; `extreme` and `legacy` are compatibility-only modes and now log an explicit migration warning at bus selection time.

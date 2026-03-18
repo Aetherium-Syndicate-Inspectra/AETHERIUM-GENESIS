@@ -6,13 +6,58 @@ import logging
 import asyncio
 
 from src.backend.genesis_core.protocol.correlation import CorrelationPolicy
-from src.backend.genesis_core.protocol.schemas import AetherEvent, AetherEventType, StateData
+from src.backend.genesis_core.protocol.schemas import (
+    AetherEvent,
+    AetherEventType,
+    ManifestationDirectivePayload,
+    ManifestationDirectiveState,
+    StateData,
+)
 from src.backend.genesis_core.models.intent import SystemIntent, IntentPayload, IntentContext
 from src.backend.governance.runtime import DirectiveRuntime
 from src.backend.genesis_core.protocol.abe_contract import ABEContract
 from src.backend.security.key_manager import KeyManager
 
 logger = logging.getLogger("AetheriumAPI")
+
+
+MANIFEST_VERSION = "2026.03-manifestation-v1"
+
+
+def _directive_state(event: AetherEvent, *, lifecycle_stage: str | None = None, sandbox: bool = False) -> dict[str, Any]:
+    return ManifestationDirectiveState(
+        correlation_id=event.correlation_id,
+        causation_id=event.causation_id,
+        trace_id=event.trace_id,
+        topic=event.topic,
+        directive_type=event.type,
+        manifest_version=MANIFEST_VERSION,
+        session_id=event.session_id,
+        lifecycle_stage=lifecycle_stage,
+        sandbox=sandbox,
+    ).model_dump(mode="json")
+
+
+def _manifestation_bridge_payload(event: AetherEvent, *, lifecycle_stage: str | None = None) -> dict[str, Any]:
+    payload = event.model_dump(mode="json")
+    nested_payload = payload.get("payload", {})
+    payload["directive_state"] = _directive_state(event, lifecycle_stage=lifecycle_stage)
+    payload["manifest_version"] = MANIFEST_VERSION
+    payload["semantic_source"] = "backend"
+    payload["frontend_contract"] = "render-only"
+    payload["render_state"] = payload.get("render_state") if isinstance(payload.get("render_state"), dict) else nested_payload.get("render_state", {})
+    payload["status"] = payload.get("status") if isinstance(payload.get("status"), dict) else nested_payload.get("status_block") or nested_payload.get("status", {})
+    payload["replay"] = payload.get("replay") if isinstance(payload.get("replay"), dict) else nested_payload.get("replay", {})
+    payload["diagnostics"] = payload.get("diagnostics") if isinstance(payload.get("diagnostics"), dict) else nested_payload.get("diagnostics", {})
+    ManifestationDirectivePayload.model_validate({
+        "directive_state": payload["directive_state"],
+        "render_state": payload["render_state"],
+        "status": payload["status"],
+        "replay": payload["replay"],
+        "diagnostics": payload["diagnostics"],
+        "semantic_source": payload["semantic_source"],
+    })
+    return payload
 
 
 def _validate_ingress_envelope(raw_payload: Dict[str, Any], session_id: str) -> AetherEvent:
@@ -28,6 +73,8 @@ def _validate_ingress_envelope(raw_payload: Dict[str, Any], session_id: str) -> 
         "text": text,
         "directive_state": {
             "session_id": session_id,
+            "manifest_version": MANIFEST_VERSION,
+            "semantic_source": "backend",
             **{k: v for k, v in correlation.items() if v is not None},
         },
     }
@@ -46,19 +93,8 @@ def _validate_ingress_envelope(raw_payload: Dict[str, Any], session_id: str) -> 
     )
 
 
-def _manifestation_payload(event: AetherEvent) -> str:
-    payload = event.model_dump(mode="json")
-    payload.setdefault("directive_state", {})
-    payload["directive_state"].update(
-        {
-            "correlation_id": event.correlation_id,
-            "causation_id": event.causation_id,
-            "trace_id": event.trace_id,
-            "topic": event.topic,
-            "directive_type": event.type,
-        }
-    )
-    return json.dumps(payload)
+def _manifestation_payload(event: AetherEvent, *, lifecycle_stage: str | None = None) -> str:
+    return json.dumps(_manifestation_bridge_payload(event, lifecycle_stage=lifecycle_stage))
 
 
 router = APIRouter(tags=["aetherium"])
@@ -146,7 +182,7 @@ async def stream_endpoint(websocket: WebSocket):
             if metric_collector:
                 metric_collector.track_event(event)
             AetherEvent.model_validate(event.model_dump(mode="json"))
-            await websocket.send_text(_manifestation_payload(event))
+            await websocket.send_text(_manifestation_payload(event, lifecycle_stage="manifestation_emit"))
         except Exception as exc:
             logger.warning("Bridge Error %s: %s", session_id, exc)
 
@@ -164,7 +200,9 @@ async def stream_endpoint(websocket: WebSocket):
             target={"service": "client", "subsystem": "manifestation", "channel": session_id},
             payload={
                 "state": {"state": "connected", "confidence": 1.0, "energy": 1.0, "coherence": 1.0},
-                "directive_state": handshake_correlation,
+                "directive_state": {**handshake_correlation, "manifest_version": MANIFEST_VERSION, "semantic_source": "backend"},
+                "status": {"phase": "connected", "label": "connected"},
+                "diagnostics": {"bridge": "ws_v3", "frontend_contract": "render-only"},
             },
             state=StateData(state="connected", confidence=1.0, energy=1.0, coherence=1.0),
             memory={"ledger_event_type": "manifestation_handshake", "causal_chain": [handshake_correlation["correlation_id"]]},

@@ -55,6 +55,27 @@ class ManifestationData(BaseModel):
     content: Union[str, Dict[str, Any]]
 
 
+
+class ManifestationDirectiveState(BaseModel):
+    correlation_id: str
+    trace_id: str
+    causation_id: Optional[str] = None
+    topic: str
+    directive_type: str
+    manifest_version: str = "2026.03-manifestation-v1"
+    session_id: Optional[str] = None
+    lifecycle_stage: Optional[str] = None
+    sandbox: bool = False
+
+
+class ManifestationDirectivePayload(BaseModel):
+    directive_state: ManifestationDirectiveState
+    render_state: Dict[str, Any] = Field(default_factory=dict)
+    status: Dict[str, Any] = Field(default_factory=dict)
+    replay: Dict[str, Any] = Field(default_factory=dict)
+    diagnostics: Dict[str, Any] = Field(default_factory=dict)
+    semantic_source: str = "backend"
+
 class StateData(BaseModel):
     state: str
     confidence: float = Field(..., ge=0.0, le=1.0)
@@ -197,6 +218,17 @@ class AetherEvent(BaseModel):
             self.intent = IntentData.model_validate(self.payload["intent"])
         if self.error is None and self.payload.get("error") is not None:
             self.error = str(self.payload["error"])
+
+        if "directive_state" in self.payload and isinstance(self.payload["directive_state"], dict):
+            directive_state = dict(self.payload["directive_state"])
+            directive_state.setdefault("correlation_id", self.correlation_id)
+            directive_state.setdefault("causation_id", self.causation_id)
+            directive_state.setdefault("trace_id", self.trace_id)
+            directive_state.setdefault("topic", self.topic)
+            directive_state.setdefault("directive_type", self.type)
+            directive_state.setdefault("session_id", self.session_id)
+            directive_state.setdefault("manifest_version", "2026.03-manifestation-v1")
+            self.payload["directive_state"] = directive_state
 
         correlation_metadata = CorrelationPolicy.build(
             correlation_id=self.correlation_id,

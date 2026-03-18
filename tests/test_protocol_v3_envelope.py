@@ -45,3 +45,26 @@ def test_correlation_policy_builds_trace_metadata():
     assert metadata["correlation_id"] == "session-abc"
     assert metadata["trace_id"] == "session-abc"
     assert metadata["causation_id"] is None
+
+
+def test_manifestation_directive_payload_preserves_backend_only_semantics():
+    event = AetherEvent(
+        type=AetherEventType.MANIFESTATION,
+        topic="manifestation.response",
+        origin={"service": "genesis_core", "subsystem": "mind"},
+        target={"service": "client", "subsystem": "manifestation", "channel": "ae-123"},
+        payload={
+            "directive_state": {"lifecycle_stage": "manifestation_emit"},
+            "render_state": {"template": "status_card"},
+            "status": {"phase": "ready"},
+            "replay": {"enabled": True},
+            "diagnostics": {"bridge": "ws_v3"},
+        },
+    )
+
+    directive_state = event.payload["directive_state"]
+    assert directive_state["correlation_id"] == event.correlation_id
+    assert directive_state["trace_id"] == event.trace_id
+    assert directive_state["topic"] == "manifestation.response"
+    assert directive_state["directive_type"] == "manifestation"
+    assert directive_state["manifest_version"] == "2026.03-manifestation-v1"
