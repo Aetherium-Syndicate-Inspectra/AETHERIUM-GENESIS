@@ -43,6 +43,8 @@ from src.backend.departments.development.javana_core.responses import REFLEX_PAR
 # Auditorium Imports
 from src.backend.genesis_core.auditorium.service import AuditoriumService
 from src.backend.genesis_core.bus.factory import BusFactory
+from src.backend.governance.core import GovernanceCore
+from src.backend.governance.runtime import DirectiveRuntime
 import zlib
 from typing import Optional
 
@@ -139,6 +141,7 @@ async def startup_event():
     await aether_bus.connect()
     app.state.aether_bus = aether_bus
     app.state.engine = engine # Expose engine to router
+    app.state.directive_runtime = DirectiveRuntime(governance=GovernanceCore(ledger=engine.lifecycle.ledger), bus=aether_bus)
 
     # Initialize Security & Metrics
     app.state.key_manager = KeyManager()

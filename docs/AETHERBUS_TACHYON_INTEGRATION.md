@@ -89,3 +89,8 @@ Phase 1 requires a single correlation policy for every V3 envelope crossing subs
 - Legacy `session_id` remains a compatibility fallback for `correlation_id` and `trace_id`, but new producers should send canonical fields directly.
 - Compatibility bus implementations may remain available for tests, but Phase 1 runtime default remains `tachyon`.
 - Replay tooling should query memory records by `correlation_id` first and use `trace_id` for cross-surface aggregation.
+
+
+## Governance runtime gate
+
+The Tachyon adapter is the canonical transport, but transport alone is not sufficient. Runtime ingress now flows through a central directive runtime that upgrades ingress payloads into `AetherEvent` envelopes, evaluates governance using full envelope context, routes approval when required, emits `governance.decision` / `execution.readiness` events, and only then authorizes lifecycle or vessel processing.

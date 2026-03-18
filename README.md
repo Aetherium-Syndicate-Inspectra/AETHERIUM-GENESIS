@@ -36,9 +36,9 @@
 `Input (Human Intent) → LogenesisEngine (Formator) → AetherBus (Resonance) → ValidatorAgent (Audit) → AgioSage (Cognitive) → Output (Manifestation)`
 
 ### เทคโนโลยีหลัก:
-- **FastAPI & WebSockets**: ระบบสื่อสารแบบ Real-time และ bridge สำหรับ manifestation/control plane
+- **FastAPI & WebSockets**: ระบบ ingress/manifestation แบบ real-time ที่ต้องส่ง intent/directive ผ่าน governance runtime ก่อน execution เสมอ
 - **AetherBus-Tachyon**: ZeroMQ + WebSocket bridge สำหรับ canonical system bus runtime
-- **HyperSonicBus**: legacy/shared-memory fast path ที่ยังคงอยู่เพื่อ compatibility เฉพาะบางกรณี
+- **Directive Runtime / Intent Gateway**: orchestration กลางสำหรับ `Intent normalization -> Governance evaluation -> Approval routing -> Execution readiness`
 - **Akashic Records**: บันทึกความจำถาวรแบบ Immutable Ledger (data/akashic_records.json)
 - **PWA (Progressive Web App)**: รองรับการติดตั้งและใช้งานเสมือนแอปพื้นฐานบนมือถือและเดสก์ท็อป
 
@@ -153,6 +153,9 @@ AETHERIUM-GENESIS ใช้ **AetherBus-Tachyon** เป็น canonical system 
 - [docs/directive_envelope_standard.md](docs/directive_envelope_standard.md)
 
 ## 🧭 Governance Runtime + Memory Fabric (Engineering Layer)
+
+Canonical runtime gate ปัจจุบันคือ `API/WebSocket ingress -> Directive Runtime -> Governance Core -> Approval Router (ถ้าจำเป็น) -> Lifecycle/Planning authorization -> Memory commit -> Manifestation` และไม่อนุญาตให้ route จาก ingress ไปยัง planner/vessel โดยตรงอีกต่อไป
+
 
 เพื่อยกระดับจากแนวคิดเชิงวิสัยทัศน์ไปสู่ execution จริง ระบบได้เพิ่ม subsystem แบบ first-class ดังนี้:
 

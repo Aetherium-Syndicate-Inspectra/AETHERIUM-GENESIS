@@ -90,3 +90,89 @@ def test_memory_fabric_projection_preserves_correlation_metadata(tmp_path):
     projected = json.loads((tmp_path / "memory" / "episodes" / "abc.json").read_text())
     assert projected["correlation"]["correlation_id"] == "corr-1"
     assert projected["correlation"]["trace_id"] == "trace-1"
+
+
+from src.backend.genesis_core.protocol.schemas import AetherEvent, AetherEventType
+from src.backend.governance.runtime import DirectiveRuntime
+
+
+class _RecordingBus:
+    def __init__(self):
+        self.events = []
+
+    async def publish(self, event):
+        self.events.append(event)
+        return None
+
+
+def _make_envelope(**payload_overrides):
+    payload = {"action": "read_file", "resource": "memory.audit", **payload_overrides}
+    return AetherEvent(
+        type=AetherEventType.INTENT_DETECTED,
+        session_id="session-1",
+        topic="intent.ingress",
+        correlation_id="corr-runtime-1",
+        trace_id="trace-runtime-1",
+        origin={"service": "api", "subsystem": "body", "channel": "session-1"},
+        target={"service": "genesis_core", "subsystem": "mind", "channel": "lifecycle"},
+        payload=payload,
+        governance={"policy_mode": "enforce", "validated": True},
+        memory={"ledger_event_type": "intent_ingress", "causal_chain": ["corr-runtime-1"]},
+    )
+
+
+async def _allowed_planner(envelope):
+    return {"handled": envelope.correlation_id}
+
+
+def test_governance_builds_full_envelope_context():
+    governance = GovernanceCore()
+    envelope = _make_envelope(environment="production")
+
+    context = governance.build_context(envelope)
+
+    assert context.envelope_id == envelope.envelope_id
+    assert context.correlation["correlation_id"] == "corr-runtime-1"
+    assert context.origin["service"] == "api"
+    assert context.target["subsystem"] == "mind"
+    assert context.action == "read_file"
+    assert context.resource == "memory.audit"
+    assert context.environment == "production"
+
+
+import pytest
+
+
+@pytest.mark.asyncio
+async def test_directive_runtime_emits_decision_and_execution_readiness():
+    bus = _RecordingBus()
+    runtime = DirectiveRuntime(governance=GovernanceCore(), bus=bus)
+
+    result = await runtime.handle_envelope(_make_envelope(), planner=_allowed_planner)
+
+    assert result.decision.status == "ALLOWED"
+    assert result.response == {"handled": "corr-runtime-1"}
+    assert [event.topic for event in bus.events] == ["governance.decision", "execution.readiness"]
+    assert all(event.correlation_id == "corr-runtime-1" for event in bus.events)
+
+
+def test_directive_runtime_stops_at_pending_approval(tmp_path):
+    import asyncio
+
+    ledger = AkashicRecords(db_path=str(tmp_path / "akashic.json"))
+    bus = _RecordingBus()
+    runtime = DirectiveRuntime(governance=GovernanceCore(ledger=ledger), bus=bus)
+
+    result = asyncio.run(
+        runtime.handle_envelope(
+            _make_envelope(action="send_email", resource="customer.outbound", real_world=True),
+            planner=_allowed_planner,
+        )
+    )
+
+    assert result.decision.status == "PENDING_APPROVAL"
+    assert result.response is None
+    assert [event.topic for event in bus.events] == ["governance.decision"]
+    chain = json.loads((tmp_path / "akashic.json").read_text())["chain"]
+    assert chain[-1]["payload"]["type"] == "governance_pending_approval"
+    assert chain[-1]["correlation"]["correlation_id"] == "corr-runtime-1"
