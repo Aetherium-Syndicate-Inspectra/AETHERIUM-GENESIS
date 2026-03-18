@@ -118,26 +118,6 @@ Phase 1 remains focused on bus and protocol alignment.
 4. **Phase 4 — Full cross-repo operationalization**
    - Contract harnesses, deployment profiles, and rollback drills across the three repositories.
 
-### Next proposals / ข้อเสนอถัดไป
-
-#### 🇹🇭 ข้อเสนอฟังก์ชัน/แนวทางต่อยอดใหม่
-- **Cross-Repo Contract Harness**: เพิ่มชุดตรวจสอบ protocol/approval/memory continuity ระหว่าง AETHERIUM-GENESIS, PRGX-AG, และ AetherBus-Tachyon
-- **Governed Replay Console**: สร้าง console สำหรับไล่เหตุการณ์ตาม `correlation_id` พร้อม timeline ของ governance, execution, และ ledger continuity
-- **Deployment Profiles**: เพิ่ม profile สำหรับ local / staging / production เพื่อกำหนด endpoint, codec, และ bridge policy ให้ตรงกันทั้ง 3 repositories
-- **Directive Catalog**: จัดทำ catalog ของ backend-authored manifestation directives เพื่อให้ frontend render ได้สม่ำเสมอและตรวจสอบสัญญาได้ง่าย
-- **Projection Workers**: แยก worker สำหรับสร้าง derived views จาก canonical stream โดยไม่แตะ append-only source of truth
-- **Approval Outcome Bridge**: แปลงผลการอนุมัติจาก PRGX-AG เป็น V3 envelopes ที่พร้อมใช้งานทั้งด้าน memory และ manifestation
-
-#### 🇬🇧 Proposed Next Functions / Extensions
-- **Cross-Repo Contract Harness**: add protocol, approval, and memory continuity checks across AETHERIUM-GENESIS, PRGX-AG, and AetherBus-Tachyon.
-- **Governed Replay Console**: build an operator surface that reconstructs one `correlation_id` lifecycle across governance, execution, and ledger continuity.
-- **Deployment Profiles**: define local, staging, and production endpoint/codec/bridge profiles shared by all three repositories.
-- **Directive Catalog**: formalize backend-authored manifestation directive shapes for stable frontend rendering.
-- **Projection Workers**: derive operator/search read models from the canonical stream without mutating the append-only source of truth.
-- **Approval Outcome Bridge**: convert PRGX-AG approval outcomes into V3 envelopes that are ready for memory commit and manifestation.
-
----
-
 ## 📦 Dependency Installation Strategy
 
 The repository now separates dependency roles more explicitly.
