@@ -82,9 +82,10 @@ This document defines the canonical directive envelope used to connect Intent, R
 
 ## Validation boundaries in runtime
 
-- **API ingress:** raw client payloads are upgraded into V3 envelopes before entering lifecycle handling.
+- **API ingress:** raw client payloads are upgraded into V3 envelopes before entering directive runtime handling.
+- **Directive runtime:** all human intent and system-triggered executable directives must pass `Intent normalization -> Governance evaluation -> Approval routing -> Execution readiness` before planner or vessel dispatch.
 - **Bus publish / consume:** `BaseAetherBus` validates V3 requirements before serialization and after decode.
-- **Governance gate:** `GovernanceCore.validate_envelope(...)` validates the envelope before policy/risk evaluation.
+- **Governance gate:** `GovernanceCore.validate_envelope(...)` and `evaluate_envelope(...)` validate the full envelope context before policy/risk evaluation.
 - **Vessel execution path:** execution adapters must validate the envelope before simulating or executing side effects.
 
 ## Correlation policy

@@ -56,7 +56,7 @@ def test_aetherium_flow():
                     received_types.append(msg["type"])
                     print(f"Received: {msg['type']}")
 
-                    if msg["type"] == "intent_detected":
+                    if msg["type"] == "intent_detected" and msg["topic"] == "intent.ingress":
                         assert msg["directive_state"]["correlation_id"] == "corr-client-1"
                         assert msg["directive_state"]["trace_id"] == "trace-client-1"
                     if msg["type"] == "manifestation":

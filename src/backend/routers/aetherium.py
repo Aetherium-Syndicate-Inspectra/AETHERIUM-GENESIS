@@ -8,6 +8,7 @@ import asyncio
 from src.backend.genesis_core.protocol.correlation import CorrelationPolicy
 from src.backend.genesis_core.protocol.schemas import AetherEvent, AetherEventType, StateData
 from src.backend.genesis_core.models.intent import SystemIntent, IntentPayload, IntentContext
+from src.backend.governance.runtime import DirectiveRuntime
 from src.backend.genesis_core.protocol.abe_contract import ABEContract
 from src.backend.security.key_manager import KeyManager
 
@@ -137,6 +138,7 @@ async def stream_endpoint(websocket: WebSocket):
 
     bus = app_state.aether_bus
     engine = app_state.engine
+    directive_runtime: DirectiveRuntime = app_state.directive_runtime
     metric_collector = getattr(app_state, "metric_collector", None)
 
     async def bridge_callback(event: AetherEvent):
@@ -190,23 +192,101 @@ async def stream_endpoint(websocket: WebSocket):
                 user_text = "[Abstract Intent]"
 
             if user_text:
-                intent = SystemIntent(
-                    origin_agent=session_id,
-                    target_agent="AgioSage_v1",
-                    intent_type="COGNITIVE_QUERY",
-                    payload=IntentPayload(content=user_text, modality="text"),
-                    correlation_id=ingress_envelope.correlation_id,
-                    context=IntentContext(
-                        emotional_valence=0.0,
-                        energy_level=0.5,
-                        turbulence=0.0,
-                        source_confidence=1.0,
-                    ),
-                )
+                ingress_envelope.payload.setdefault("action", "cognitive_query")
+                ingress_envelope.payload.setdefault("resource", "mind.lifecycle")
+                ingress_envelope.payload.setdefault("intent_type", "COGNITIVE_QUERY")
+
+                async def governed_planner(envelope: AetherEvent) -> SystemIntent | None:
+                    intent = SystemIntent(
+                        origin_agent=session_id,
+                        target_agent="AgioSage_v1",
+                        intent_type="COGNITIVE_QUERY",
+                        payload=IntentPayload(content=user_text, modality="text"),
+                        correlation_id=envelope.correlation_id,
+                        context=IntentContext(
+                            emotional_valence=0.0,
+                            energy_level=0.5,
+                            turbulence=0.0,
+                            source_confidence=1.0,
+                        ),
+                    )
+                    return await engine.lifecycle.process_request(intent)
 
                 async def process_task() -> None:
                     try:
-                        response_intent = await engine.lifecycle.process_request(intent)
+                        runtime_result = await directive_runtime.handle_envelope(ingress_envelope, planner=governed_planner)
+                        if runtime_result.decision.status == "PENDING_APPROVAL":
+                            await bus.publish(
+                                AetherEvent(
+                                    type=AetherEventType.STATE_UPDATE,
+                                    session_id=session_id,
+                                    topic="governance.approval.pending",
+                                    correlation_id=ingress_envelope.correlation_id,
+                                    causation_id=ingress_envelope.envelope_id,
+                                    trace_id=ingress_envelope.trace_id,
+                                    origin={"service": "governance", "subsystem": "kernel", "channel": session_id},
+                                    target={"service": "client", "subsystem": "manifestation", "channel": session_id},
+                                    payload={
+                                        "status": "PENDING_APPROVAL",
+                                        "approval_ticket_id": runtime_result.decision.ticket_id,
+                                        "reason": runtime_result.decision.reason,
+                                        "directive_state": {
+                                            "correlation_id": ingress_envelope.correlation_id,
+                                            "causation_id": ingress_envelope.envelope_id,
+                                            "trace_id": ingress_envelope.trace_id,
+                                        },
+                                    },
+                                    governance={
+                                        "decision": "PENDING_APPROVAL",
+                                        "risk_tier": runtime_result.decision.risk_tier.name,
+                                        "policy_effect": runtime_result.decision.policy_effect or "REQUIRE_APPROVAL",
+                                        "approval_ticket_id": runtime_result.decision.ticket_id,
+                                        "policy_mode": runtime_result.decision.policy_mode,
+                                        "validated": True,
+                                    },
+                                    memory={
+                                        "ledger_event_type": "governance_pending_approval",
+                                        "causal_chain": [ingress_envelope.correlation_id],
+                                    },
+                                )
+                            )
+                            return
+                        if runtime_result.decision.status == "DENIED":
+                            await bus.publish(
+                                AetherEvent(
+                                    type=AetherEventType.DEGRADATION,
+                                    session_id=session_id,
+                                    topic="governance.denied",
+                                    correlation_id=ingress_envelope.correlation_id,
+                                    causation_id=ingress_envelope.envelope_id,
+                                    trace_id=ingress_envelope.trace_id,
+                                    origin={"service": "governance", "subsystem": "kernel", "channel": session_id},
+                                    target={"service": "client", "subsystem": "manifestation", "channel": session_id},
+                                    payload={
+                                        "error": runtime_result.decision.reason,
+                                        "directive_state": {
+                                            "correlation_id": ingress_envelope.correlation_id,
+                                            "causation_id": ingress_envelope.envelope_id,
+                                            "trace_id": ingress_envelope.trace_id,
+                                        },
+                                    },
+                                    governance={
+                                        "decision": "DENIED",
+                                        "risk_tier": runtime_result.decision.risk_tier.name,
+                                        "policy_effect": runtime_result.decision.policy_effect or "DENY",
+                                        "policy_mode": runtime_result.decision.policy_mode,
+                                        "validated": True,
+                                    },
+                                    memory={
+                                        "ledger_event_type": "governance_denied",
+                                        "causal_chain": [ingress_envelope.correlation_id],
+                                    },
+                                    error=runtime_result.decision.reason,
+                                )
+                            )
+                            return
+
+                        response_intent = runtime_result.response
                         if response_intent:
                             await bus.publish(
                                 AetherEvent(
@@ -226,7 +306,13 @@ async def stream_endpoint(websocket: WebSocket):
                                             "trace_id": ingress_envelope.trace_id,
                                         },
                                     },
-                                    governance={"validated": True, "policy_mode": "enforce"},
+                                    governance={
+                                        "decision": runtime_result.decision.status,
+                                        "risk_tier": runtime_result.decision.risk_tier.name,
+                                        "policy_effect": runtime_result.decision.policy_effect or "ALLOW",
+                                        "policy_mode": runtime_result.decision.policy_mode,
+                                        "validated": True,
+                                    },
                                     memory={
                                         "ledger_event_type": "manifestation_emit",
                                         "causal_chain": [ingress_envelope.correlation_id],
