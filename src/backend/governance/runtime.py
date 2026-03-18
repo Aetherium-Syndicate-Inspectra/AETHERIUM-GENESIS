@@ -66,7 +66,11 @@ class DirectiveRuntime:
                     "correlation_id": envelope.correlation_id,
                     "causation_id": envelope.envelope_id,
                     "trace_id": envelope.trace_id,
+                    "manifest_version": "2026.03-manifestation-v1",
+                    "semantic_source": "backend",
                 },
+                "status_block": {"phase": "governance", "label": decision.status},
+                "diagnostics": {"governed_action": decision.action, "governed_resource": decision.resource},
             },
             governance={
                 "decision": decision.status,
@@ -103,7 +107,11 @@ class DirectiveRuntime:
                     "correlation_id": envelope.correlation_id,
                     "causation_id": envelope.envelope_id,
                     "trace_id": envelope.trace_id,
+                    "manifest_version": "2026.03-manifestation-v1",
+                    "semantic_source": "backend",
                 },
+                "status_block": {"phase": "execution_readiness", "label": "authorized"},
+                "diagnostics": {"governed_action": decision.action, "governed_resource": decision.resource},
             },
             governance={
                 "decision": "ALLOWED",

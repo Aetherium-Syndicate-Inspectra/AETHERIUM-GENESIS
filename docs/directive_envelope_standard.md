@@ -106,6 +106,52 @@ The protocol layer defines one canonical correlation policy for replayable envel
 3. Use `trace_id` to join UI, governance, and memory views for the same execution cycle.
 4. Confirm ledger/projection records preserve the same metadata before replaying side effects.
 
+
+## Canonical manifestation directive contract
+
+Frontend manifestation consumers may only render backend-authored directive payloads. They must not generate semantic meaning, intent classification, governance status, or execution state locally.
+
+### Allowed frontend fields
+
+```json
+{
+  "manifest_version": "2026.03-manifestation-v1",
+  "frontend_contract": "render-only",
+  "semantic_source": "backend",
+  "directive_state": {
+    "correlation_id": "corr-...",
+    "causation_id": "env-...",
+    "trace_id": "trace-...",
+    "topic": "manifestation.response",
+    "directive_type": "manifestation",
+    "manifest_version": "2026.03-manifestation-v1",
+    "session_id": "ae-1234",
+    "lifecycle_stage": "manifestation_emit",
+    "sandbox": false
+  },
+  "render_state": {},
+  "status": {},
+  "replay": {},
+  "diagnostics": {}
+}
+```
+
+### Frontend restrictions
+
+The client may:
+- render `render_state`
+- display `status`
+- expose replay controls using `replay`
+- expose inspectable metadata using `diagnostics` and `directive_state`
+
+The client must not:
+- infer intent, risk tier, or execution meaning from visuals
+- synthesize new semantic states from particle behavior, color, motion, audio level, or timing
+- rewrite `correlation_id`, `trace_id`, `topic`, or `manifest_version`
+- upgrade sandbox/demo output into canonical runtime state
+
+Sandbox/demo pages must be explicitly labeled `sandbox=true` and treated as non-canonical surfaces.
+
 ## Migration notes from legacy envelopes
 
 Legacy `AetherEvent` packets and `AkashicEnvelope` instances are automatically upgraded when possible:
