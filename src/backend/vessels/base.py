@@ -2,13 +2,16 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+import logging
 from typing import Any, Dict, Mapping
 
 from pydantic import BaseModel, Field
 
+from src.backend.genesis_core.execution.pipeline import GovernedExecutionPipeline
 from src.backend.genesis_core.memory.akashic import AkashicRecords
 from src.backend.genesis_core.protocol.schemas import AetherEvent
 
+logger = logging.getLogger("vessels.runtime")
 
 ALLOWED_SECRET_REFERENCE_PREFIXES = ("env:", "secret://", "vault://", "aws-sm://", "gcp-sm://", "azure-kv://")
 FORBIDDEN_SECRET_KEYS = {
@@ -45,6 +48,7 @@ class ExecutionVessel(ABC):
     def __init__(self, name: str, ledger: AkashicRecords | None = None):
         self.name = name
         self.ledger = ledger or AkashicRecords()
+        self.pipeline = GovernedExecutionPipeline(ledger=self.ledger, actor_label="vessel")
 
     def preview(self, directive: AetherEvent | Dict[str, Any]) -> ActionPreview:
         envelope = self._coerce_envelope(directive)
@@ -78,11 +82,15 @@ class ExecutionVessel(ABC):
 
     def _validate_execution_preconditions(self, envelope: AetherEvent) -> DirectivePayload:
         payload = self._extract_payload(envelope)
-        governance = envelope.governance
-        if not governance.validated:
-            raise PermissionError("Directive execution requires validated governance metadata")
-        if governance.decision not in {"ALLOWED", "ALLOW"}:
-            raise PermissionError("Directive execution requires an allowed governance decision")
+        self.pipeline.require_execution_metadata(envelope, payload.model_dump(mode="json"))
+        logger.info(
+            "execution_preconditions_satisfied",
+            extra={
+                "vessel": self.name,
+                "action": payload.action,
+                "correlation_id": envelope.correlation_id,
+            },
+        )
         return payload
 
     def _validate_correlation(self, envelope: AetherEvent) -> None:
@@ -136,32 +144,9 @@ class ExecutionVessel(ABC):
         payload: DirectivePayload,
         result: Dict[str, Any],
     ) -> Dict[str, Any]:
-        outcome_payload = {
-            "type": "execution_outcome",
-            "vessel": self.name,
-            "action": payload.action,
-            "result": result,
-            "correlation_id": envelope.correlation_id,
-            "causation_id": envelope.envelope_id,
-            "trace_id": envelope.trace_id,
-            "execution_scope": payload.execution_scope,
-            "governance": envelope.governance.model_dump(mode="json"),
-            "actor": payload.actor,
-            "source": envelope.origin.model_dump(mode="json"),
-        }
-        ledger_hash = self.ledger.append_record(
-            payload=outcome_payload,
-            actor=f"vessel:{self.name}",
-            intent_id=envelope.envelope_id,
-            causal_link=envelope.causation_id or envelope.envelope_id,
-            correlation={
-                "correlation_id": envelope.correlation_id,
-                "causation_id": envelope.envelope_id,
-                "trace_id": envelope.trace_id,
-            },
+        return self.pipeline.record_outcome(
+            envelope=envelope,
+            payload=payload.model_dump(mode="json"),
+            result=result,
+            vessel_name=self.name,
         )
-        response = dict(result)
-        response.setdefault("memory", {})
-        response["memory"]["ledger_record_id"] = ledger_hash
-        response["memory"]["correlation_id"] = envelope.correlation_id
-        return response

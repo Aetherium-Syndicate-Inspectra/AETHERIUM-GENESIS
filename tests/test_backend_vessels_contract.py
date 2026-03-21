@@ -23,7 +23,7 @@ def build_directive(*, action='write_file', params=None, governance=None, scope=
             'actor': actor or {'id': 'user-123', 'type': 'human'},
             'metadata': {'source': 'test-suite'},
         },
-        'governance': governance or {'validated': True, 'decision': 'ALLOWED', 'risk_tier': 'TIER_1'},
+        'governance': governance or {'validated': True, 'decision': 'ALLOWED', 'risk_tier': 'TIER_1', 'policy_effect': 'ALLOW'},
         'memory': {'ledger_event_type': 'execution_requested', 'causal_chain': ['corr-test-001'], 'replayable': True},
     }
 
@@ -63,7 +63,15 @@ def test_workspace_vessel_uses_canonical_directive_and_logs_outcome(vessel_env):
 
 def test_workspace_vessel_blocks_unvalidated_governance(vessel_env):
     vessel, _, _ = vessel_env
-    directive = build_directive(governance={'validated': False, 'decision': 'ALLOWED', 'risk_tier': 'TIER_1'})
+    directive = build_directive(governance={'validated': False, 'decision': 'ALLOWED', 'risk_tier': 'TIER_1', 'policy_effect': 'ALLOW'})
+
+    with pytest.raises(PermissionError):
+        vessel.execute(directive)
+
+
+def test_workspace_vessel_blocks_missing_policy_effect(vessel_env):
+    vessel, _, _ = vessel_env
+    directive = build_directive(governance={'validated': True, 'decision': 'ALLOWED', 'risk_tier': 'TIER_1'})
 
     with pytest.raises(PermissionError):
         vessel.execute(directive)

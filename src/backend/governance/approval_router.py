@@ -27,9 +27,12 @@ class ApprovalRouter:
     def get_inbox(self) -> list[ApprovalTicket]:
         return sorted(self._inbox.values(), key=lambda t: t.created_at, reverse=True)
 
-    def decide(self, ticket_id: str, decision: str) -> bool:
+    def decide(self, ticket_id: str, decision: str) -> str:
         ticket = self._inbox.get(ticket_id)
         if ticket is None:
-            return False
-        ticket.status = "APPROVED" if decision.upper() == "APPROVED" else "REJECTED"
-        return ticket.status == "APPROVED"
+            return "NOT_FOUND"
+        normalized = decision.upper()
+        if normalized not in {"APPROVED", "REJECTED", "DENIED"}:
+            normalized = "REJECTED"
+        ticket.status = normalized
+        return ticket.status

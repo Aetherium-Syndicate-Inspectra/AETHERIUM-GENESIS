@@ -40,7 +40,10 @@ class KeyManager:
     Uses a simple JSON file as the source of truth.
     """
     def __init__(self, filepath: str = "access_keys.json"):
-        self.filepath = filepath
+        configured_path = os.getenv("AETHERIUM_KEYSTORE_PATH", filepath)
+        if configured_path == "access_keys.json":
+            configured_path = "data/runtime/access_keys.json"
+        self.filepath = configured_path
         self.store = KeyStoreData()
         self._load()
 
@@ -59,6 +62,9 @@ class KeyManager:
 
     def _save(self):
         try:
+            directory = os.path.dirname(self.filepath)
+            if directory:
+                os.makedirs(directory, exist_ok=True)
             with open(self.filepath, 'w') as f:
                 f.write(self.store.model_dump_json(indent=2))
         except Exception as e:

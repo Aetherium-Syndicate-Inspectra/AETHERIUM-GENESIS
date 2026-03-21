@@ -50,15 +50,32 @@ class DirectiveRuntime:
             return RuntimeResult(envelope=envelope, decision=decision, outcome_status="ALLOWED", detail="Execution planner not attached")
 
         await self._publish_execution_readiness(envelope, decision)
+        logger.info(
+            "runtime_execution_attempt",
+            extra={
+                "correlation_id": envelope.correlation_id,
+                "action": decision.action,
+                "resource": decision.resource,
+                "policy_effect": decision.policy_effect,
+            },
+        )
         try:
             response = await planner(envelope)
         except Exception as exc:
             detail = str(exc)
             await self.commit_runtime_outcome(envelope, decision, outcome_status="ERROR", detail=detail, error=detail)
+            logger.exception(
+                "runtime_execution_failure",
+                extra={"correlation_id": envelope.correlation_id, "action": decision.action, "resource": decision.resource},
+            )
             raise
 
         detail = "Planner completed"
         await self.commit_runtime_outcome(envelope, decision, outcome_status="COMPLETED", detail=detail)
+        logger.info(
+            "runtime_execution_completed",
+            extra={"correlation_id": envelope.correlation_id, "action": decision.action, "resource": decision.resource},
+        )
         return RuntimeResult(envelope=envelope, decision=decision, response=response, outcome_status="COMPLETED", detail=detail)
 
     async def commit_runtime_outcome(

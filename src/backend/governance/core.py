@@ -1,6 +1,7 @@
 import time
 import uuid
 from dataclasses import asdict, dataclass, field
+import logging
 from typing import Any, Dict, Optional
 
 from src.backend.genesis_core.protocol.correlation import CorrelationPolicy
@@ -10,6 +11,7 @@ from src.backend.governance.approval_router import ApprovalRouter, ApprovalTicke
 from src.backend.governance.policy_engine import PolicyEngine, PolicyResult, default_policy_engine
 from src.backend.governance.risk_tiering import ActionTier, RiskTiering
 
+logger = logging.getLogger("governance.core")
 
 @dataclass
 class ApprovalRequest:
@@ -189,6 +191,7 @@ class GovernanceCore:
                 ledger_event_type=f"governance_denied{mode_suffix}",
             )
             self._record(f"governance_denied{mode_suffix}", decision, policy, correlation, envelope_context)
+            logger.info("governance_decision", extra={"status": decision.status, "action": action, "resource": resource, "correlation_id": correlation["correlation_id"]})
             return decision
 
         if policy.effect == "REQUIRE_APPROVAL":
@@ -205,6 +208,7 @@ class GovernanceCore:
                     ledger_event_type=f"governance_pending_approval{mode_suffix}",
                 )
                 self._record(f"governance_pending_approval{mode_suffix}", decision, policy, correlation, envelope_context)
+                logger.info("governance_decision", extra={"status": decision.status, "action": action, "resource": resource, "correlation_id": correlation["correlation_id"]})
                 return decision
 
             ticket = ApprovalTicket(
@@ -229,6 +233,7 @@ class GovernanceCore:
                 ledger_event_type="governance_pending_approval",
             )
             self._record("governance_pending_approval", decision, policy, correlation, envelope_context)
+            logger.info("governance_decision", extra={"status": decision.status, "action": action, "resource": resource, "correlation_id": correlation["correlation_id"], "ticket_id": ticket.ticket_id})
             return decision
 
         decision = GovernanceDecision(
@@ -242,6 +247,7 @@ class GovernanceCore:
             ledger_event_type=f"governance_allowed{mode_suffix}",
         )
         self._record(f"governance_allowed{mode_suffix}", decision, policy, correlation, envelope_context)
+        logger.info("governance_decision", extra={"status": decision.status, "action": action, "resource": resource, "correlation_id": correlation["correlation_id"]})
         return decision
 
     def request_approval(self, request: ApprovalRequest) -> bool:
@@ -279,8 +285,7 @@ class GovernanceCore:
                 detail="Approval request not found",
             )
 
-        normalized_decision = "APPROVED" if decision.upper() == "APPROVED" else "REJECTED"
-        ticket.status = normalized_decision
+        normalized_decision = self.approval_router.decide(request_id, decision)
         result = ApprovalDecisionResult(
             status=normalized_decision,
             request_id=request_id,
@@ -289,6 +294,7 @@ class GovernanceCore:
             ticket=ticket,
         )
         self._record_approval_decision(ticket, result)
+        logger.info("approval_decision_recorded", extra={"request_id": request_id, "decision": normalized_decision, "action": ticket.action, "resource": ticket.resource})
         return result
 
     def simulate_rule_promotion(self, gem: Dict[str, Any], shadow_mode: bool = True) -> Dict[str, Any]:

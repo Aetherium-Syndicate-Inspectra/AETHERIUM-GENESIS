@@ -490,6 +490,7 @@ async def get_manifest():
 
 # 2. Mount Subdirectories
 app.mount("/gunui", StaticFiles(directory=os.path.join(BASE_DIR, "src/frontend/public/gunui"), html=True), name="gunui")
+app.mount("/sandbox/gunui", StaticFiles(directory=os.path.join(BASE_DIR, "src/frontend/public/gunui"), html=True), name="sandbox-gunui")
 app.mount("/icons", StaticFiles(directory=os.path.join(BASE_DIR, "src/frontend/public/icons")), name="icons")
 app.mount("/public", StaticFiles(directory=os.path.join(BASE_DIR, "src/frontend/public")), name="public")
 

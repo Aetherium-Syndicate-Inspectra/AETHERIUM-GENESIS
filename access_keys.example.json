@@ -1,0 +1,14 @@
+{
+  "keys": {
+    "ak-example-internal-key": {
+      "key_id": "example-key-id",
+      "access_key": "ak-example-internal-key",
+      "abe_id": "example-abe-id",
+      "tier": "INTERNAL",
+      "status": "ACTIVE",
+      "created_at": 0,
+      "last_used": 0,
+      "label": "example fixture only"
+    }
+  }
+}
