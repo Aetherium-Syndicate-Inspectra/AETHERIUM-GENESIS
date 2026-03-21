@@ -1,14 +1,39 @@
 import time
 import uuid
+from dataclasses import asdict, dataclass, field
+from typing import Any, Dict, Optional
 
 from src.backend.genesis_core.protocol.correlation import CorrelationPolicy
 from src.backend.genesis_core.protocol.schemas import AetherEvent
-from dataclasses import asdict, dataclass
-from typing import Any, Dict
 
 from src.backend.governance.approval_router import ApprovalRouter, ApprovalTicket
 from src.backend.governance.policy_engine import PolicyEngine, PolicyResult, default_policy_engine
 from src.backend.governance.risk_tiering import ActionTier, RiskTiering
+
+
+@dataclass
+class ApprovalRequest:
+    request_id: str
+    tier: ActionTier
+    actor: str
+    intent_id: str
+    action_type: str
+    preview_data: Dict[str, Any]
+    resource: str = "unknown"
+    status: str = "PENDING_APPROVAL"
+    created_at: float = field(default_factory=time.time)
+
+
+@dataclass
+class ApprovalDecisionResult:
+    status: str
+    request_id: str
+    decision: str
+    detail: str
+    ticket: ApprovalTicket | None = None
+
+    def __bool__(self) -> bool:
+        return self.status == "APPROVED"
 
 
 @dataclass
@@ -44,10 +69,27 @@ class GovernanceDecision:
 class GovernanceCore:
     """First-class governance runtime: tiering + policy + approval + containment."""
 
-    def __init__(self, ledger=None, policy_engine: PolicyEngine | None = None, approval_router: ApprovalRouter | None = None):
+    def __init__(
+        self,
+        config: Optional[Dict[str, Any]] = None,
+        ledger=None,
+        policy_engine: PolicyEngine | None = None,
+        approval_router: ApprovalRouter | None = None,
+    ):
+        self.config = config or {}
         self.ledger = ledger
         self.policy_engine = policy_engine or default_policy_engine()
         self.approval_router = approval_router or ApprovalRouter()
+
+    @property
+    def pending_approvals(self) -> Dict[str, ApprovalTicket]:
+        return self.approval_router._inbox
+
+    def list_pending_approvals(self) -> list[ApprovalTicket]:
+        return self.approval_router.get_inbox()
+
+    def assess_risk(self, action_type: str, payload: Dict[str, Any]) -> ActionTier:
+        return RiskTiering.classify(action_type, payload)
 
     def validate_envelope(self, envelope: AetherEvent) -> AetherEvent:
         validated = AetherEvent.model_validate(envelope.model_dump(mode="json"))
@@ -172,6 +214,7 @@ class GovernanceCore:
                 risk_tier=tier,
                 impact=payload.get("impact", "External side effect may occur"),
                 evidence=payload.get("evidence", {}),
+                status="PENDING_APPROVAL",
             )
             self.approval_router.enqueue(ticket)
             decision = GovernanceDecision(
@@ -201,6 +244,75 @@ class GovernanceCore:
         self._record(f"governance_allowed{mode_suffix}", decision, policy, correlation, envelope_context)
         return decision
 
+    def request_approval(self, request: ApprovalRequest) -> bool:
+        if request.tier <= ActionTier.TIER_0_READ_ONLY:
+            request.status = "ALLOWED"
+            return True
+
+        if request.tier == ActionTier.TIER_1_REVERSIBLE and self.config.get("auto_approve_tier_1", True):
+            request.status = "APPROVED"
+            self._record_approval_result(request, "APPROVED", "Tier 1 auto-approved", event_type="approval_auto_approved")
+            return True
+
+        ticket = ApprovalTicket(
+            ticket_id=request.request_id,
+            action=request.action_type,
+            resource=request.resource,
+            risk_tier=request.tier,
+            impact=request.preview_data.get("impact", "External side effect may occur") if isinstance(request.preview_data, dict) else "External side effect may occur",
+            evidence=request.preview_data if isinstance(request.preview_data, dict) else {"preview": request.preview_data},
+            status="PENDING_APPROVAL",
+            created_at=request.created_at,
+        )
+        request.status = "PENDING_APPROVAL"
+        self.approval_router.enqueue(ticket)
+        self._record_approval_result(request, "PENDING_APPROVAL", "Human approval required", event_type="approval_requested")
+        return False
+
+    def handle_approval(self, request_id: str, decision: str) -> ApprovalDecisionResult:
+        ticket = self.pending_approvals.get(request_id)
+        if ticket is None:
+            return ApprovalDecisionResult(
+                status="NOT_FOUND",
+                request_id=request_id,
+                decision=decision.upper(),
+                detail="Approval request not found",
+            )
+
+        normalized_decision = "APPROVED" if decision.upper() == "APPROVED" else "REJECTED"
+        ticket.status = normalized_decision
+        result = ApprovalDecisionResult(
+            status=normalized_decision,
+            request_id=request_id,
+            decision=normalized_decision,
+            detail="Approval recorded" if normalized_decision == "APPROVED" else "Request rejected by operator",
+            ticket=ticket,
+        )
+        self._record_approval_decision(ticket, result)
+        return result
+
+    def simulate_rule_promotion(self, gem: Dict[str, Any], shadow_mode: bool = True) -> Dict[str, Any]:
+        promoted_rule = {
+            "rule_id": f"rule-{gem.get('gem_id', 'unknown')}",
+            "title": gem.get("title"),
+            "principle": gem.get("principle"),
+            "source": "gem",
+            "status": "SHADOW" if shadow_mode else "ACTIVE",
+        }
+        result = {
+            "mode": "shadow" if shadow_mode else "active",
+            "would_block_actions": ["send_email", "delete_all_data"],
+            "promoted_rule": promoted_rule,
+        }
+        if self.ledger:
+            self.ledger.append_record(
+                payload={"type": "policy_simulation", "result": result, "event_type": "policy_simulation", "timestamp": time.time()},
+                actor="governance",
+                intent_id=promoted_rule["rule_id"],
+                causal_link=gem.get("gem_id"),
+            )
+        return result
+
     def recommend_recovery(self, event: Dict[str, Any]) -> Dict[str, str]:
         severity = str(event.get("severity", "low")).lower()
         if severity in {"critical", "high"}:
@@ -211,8 +323,55 @@ class GovernanceCore:
             recommendation = {"mode": "suspend", "reason": "Safety-first manual inspection"}
 
         if self.ledger:
-            self.ledger.append_record(payload={"type": "governance_recovery_recommendation", **recommendation}, actor="governance", correlation=CorrelationPolicy.build(fallback="governance_recovery_recommendation"))
+            self.ledger.append_record(payload={"type": "governance_recovery_recommendation", "event_type": "governance_recovery_recommendation", **recommendation}, actor="governance", correlation=CorrelationPolicy.build(fallback="governance_recovery_recommendation"))
         return recommendation
+
+    def _record_approval_result(self, request: ApprovalRequest, status: str, detail: str, *, event_type: str) -> None:
+        if not self.ledger:
+            return
+        correlation = CorrelationPolicy.build(correlation_id=request.intent_id, causation_id=request.request_id, fallback=request.actor)
+        self.ledger.append_record(
+            payload={
+                "type": event_type,
+                "event_type": event_type,
+                "timestamp": time.time(),
+                "request_id": request.request_id,
+                "intent_id": request.intent_id,
+                "action": request.action_type,
+                "resource": request.resource,
+                "decision_status": status,
+                "detail": detail,
+                "risk_tier": request.tier.name,
+                "preview": request.preview_data,
+            },
+            actor=request.actor,
+            intent_id=request.intent_id,
+            causal_link=request.request_id,
+            correlation=correlation,
+        )
+
+    def _record_approval_decision(self, ticket: ApprovalTicket, result: ApprovalDecisionResult) -> None:
+        if not self.ledger:
+            return
+        correlation = CorrelationPolicy.build(correlation_id=result.request_id, causation_id=result.request_id, fallback=ticket.action)
+        self.ledger.append_record(
+            payload={
+                "type": "approval_decided",
+                "event_type": "approval_decided",
+                "timestamp": time.time(),
+                "request_id": result.request_id,
+                "action": ticket.action,
+                "resource": ticket.resource,
+                "decision_status": result.status,
+                "decision": result.decision,
+                "detail": result.detail,
+                "risk_tier": ticket.risk_tier.name,
+            },
+            actor="governance",
+            intent_id=result.request_id,
+            causal_link=result.request_id,
+            correlation=correlation,
+        )
 
     def _record(
         self,
@@ -227,8 +386,11 @@ class GovernanceCore:
         self.ledger.append_record(
             payload={
                 "type": event_type,
+                "event_type": event_type,
+                "timestamp": time.time(),
                 "action": decision.action,
                 "resource": decision.resource,
+                "decision_status": decision.status,
                 "decision": asdict(decision),
                 "policy": {
                     "effect": policy.effect,
@@ -236,10 +398,9 @@ class GovernanceCore:
                     "mode": policy.mode,
                 },
                 "envelope": asdict(envelope_context) if envelope_context else None,
-                "timestamp": time.time(),
-                "correlation": correlation,
             },
             actor="governance",
-            intent_id=decision.ticket_id,
+            intent_id=decision.ticket_id or decision.action,
+            causal_link=decision.ticket_id or decision.action,
             correlation=correlation,
         )

@@ -15,6 +15,8 @@ class RuntimeResult:
     envelope: AetherEvent
     decision: GovernanceDecision
     response: Any = None
+    outcome_status: str | None = None
+    detail: str | None = None
 
 
 class DirectiveRuntime:
@@ -35,12 +37,68 @@ class DirectiveRuntime:
         decision = self.governance.evaluate_envelope(envelope, dry_run=dry_run)
         await self._publish_decision(envelope, decision)
 
-        if decision.status != "ALLOWED" or planner is None:
-            return RuntimeResult(envelope=envelope, decision=decision)
+        if decision.status == "PENDING_APPROVAL":
+            await self.commit_runtime_outcome(envelope, decision, outcome_status="PENDING_APPROVAL", detail=decision.reason)
+            return RuntimeResult(envelope=envelope, decision=decision, outcome_status="PENDING_APPROVAL", detail=decision.reason)
+
+        if decision.status == "DENIED":
+            await self.commit_runtime_outcome(envelope, decision, outcome_status="DENIED", detail=decision.reason)
+            return RuntimeResult(envelope=envelope, decision=decision, outcome_status="DENIED", detail=decision.reason)
+
+        if planner is None:
+            await self.commit_runtime_outcome(envelope, decision, outcome_status="ALLOWED", detail="Execution planner not attached")
+            return RuntimeResult(envelope=envelope, decision=decision, outcome_status="ALLOWED", detail="Execution planner not attached")
 
         await self._publish_execution_readiness(envelope, decision)
-        response = await planner(envelope)
-        return RuntimeResult(envelope=envelope, decision=decision, response=response)
+        try:
+            response = await planner(envelope)
+        except Exception as exc:
+            detail = str(exc)
+            await self.commit_runtime_outcome(envelope, decision, outcome_status="ERROR", detail=detail, error=detail)
+            raise
+
+        detail = "Planner completed"
+        await self.commit_runtime_outcome(envelope, decision, outcome_status="COMPLETED", detail=detail)
+        return RuntimeResult(envelope=envelope, decision=decision, response=response, outcome_status="COMPLETED", detail=detail)
+
+    async def commit_runtime_outcome(
+        self,
+        envelope: AetherEvent,
+        decision: GovernanceDecision,
+        *,
+        outcome_status: str,
+        detail: str,
+        error: str | None = None,
+        actor: str = "runtime",
+    ) -> str | None:
+        if not self.governance.ledger:
+            return None
+        return self.governance.ledger.append_record(
+            payload={
+                "type": "runtime_outcome",
+                "event_type": "runtime_outcome",
+                "correlation_id": envelope.correlation_id,
+                "causation_id": envelope.envelope_id,
+                "trace_id": envelope.trace_id,
+                "action": decision.action,
+                "resource": decision.resource,
+                "decision_status": decision.status,
+                "outcome_status": outcome_status,
+                "detail": detail,
+                "error": error,
+                "actor": actor,
+                "origin": envelope.origin.model_dump(mode="json"),
+                "replayable": True,
+            },
+            actor=actor,
+            intent_id=decision.ticket_id or envelope.correlation_id,
+            causal_link=envelope.envelope_id,
+            correlation={
+                "correlation_id": envelope.correlation_id,
+                "causation_id": envelope.envelope_id,
+                "trace_id": envelope.trace_id,
+            },
+        )
 
     async def _publish_decision(self, envelope: AetherEvent, decision: GovernanceDecision) -> None:
         policy_effect = decision.policy_effect or (
@@ -60,7 +118,7 @@ class DirectiveRuntime:
                 "topic": envelope.topic,
                 "governed_action": decision.action,
                 "governed_resource": decision.resource,
-                "status": decision.status,
+                "status": {"phase": "governance", "label": decision.status},
                 "reason": decision.reason,
                 "directive_state": {
                     "correlation_id": envelope.correlation_id,
@@ -71,6 +129,13 @@ class DirectiveRuntime:
                 },
                 "status_block": {"phase": "governance", "label": decision.status},
                 "diagnostics": {"governed_action": decision.action, "governed_resource": decision.resource},
+                "governance": {
+                    "decision": decision.status,
+                    "risk_tier": decision.risk_tier.name,
+                    "policy_effect": policy_effect,
+                    "approval_ticket_id": decision.ticket_id,
+                },
+                "memory": {"ledger_event_type": decision.ledger_event_type or "governance_decision", "replayable": True},
             },
             governance={
                 "decision": decision.status,
@@ -103,6 +168,7 @@ class DirectiveRuntime:
                 "envelope_id": envelope.envelope_id,
                 "governed_action": decision.action,
                 "governed_resource": decision.resource,
+                "status": {"phase": "execution_readiness", "label": "ALLOWED"},
                 "directive_state": {
                     "correlation_id": envelope.correlation_id,
                     "causation_id": envelope.envelope_id,
@@ -110,8 +176,14 @@ class DirectiveRuntime:
                     "manifest_version": "2026.03-manifestation-v1",
                     "semantic_source": "backend",
                 },
-                "status_block": {"phase": "execution_readiness", "label": "authorized"},
+                "status_block": {"phase": "execution_readiness", "label": "ALLOWED"},
                 "diagnostics": {"governed_action": decision.action, "governed_resource": decision.resource},
+                "governance": {
+                    "decision": "ALLOWED",
+                    "risk_tier": decision.risk_tier.name,
+                    "policy_effect": decision.policy_effect or "ALLOW",
+                },
+                "memory": {"ledger_event_type": "approved_execution_readiness", "replayable": True},
             },
             governance={
                 "decision": "ALLOWED",

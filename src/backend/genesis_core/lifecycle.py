@@ -6,7 +6,7 @@ from typing import Dict, Any, Optional
 
 from src.backend.genesis_core.bus.factory import BusFactory
 from src.backend.genesis_core.agents.validator import ValidatorAgent
-from src.backend.genesis_core.governance.core import GovernanceCore
+from src.backend.governance.core import GovernanceCore
 from src.backend.genesis_core.agents.agio_sage import AgioSage
 from src.backend.genesis_core.models.intent import SystemIntent, IntentPayload, IntentContext
 from src.backend.genesis_core.protocol.correlation import CorrelationPolicy

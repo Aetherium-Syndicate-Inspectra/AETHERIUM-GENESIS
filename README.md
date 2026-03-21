@@ -147,8 +147,17 @@ python -m uvicorn src.backend.main:app --host 0.0.0.0 --port 8000
 ## ✅ Recommended validation / ชุดตรวจสอบที่แนะนำ
 
 ```bash
-pytest -q tests/test_aetherium_api.py tests/test_integration_ui.py tests/test_frontend_homepage.py
+pytest -q tests/test_aetherium_api.py tests/test_governance_runtime.py tests/test_governance_router.py tests/test_integration_ui.py tests/test_frontend_homepage.py
 ```
+
+---
+
+## 🔁 Canonical runtime and compatibility notes
+
+- Runtime governance now resolves through `src/backend/governance/core.py` and `src/backend/governance/runtime.py`.
+- `/ws/v3/stream` is the canonical ingress. `/ws` and `/ws/v2/stream` remain compatibility adapters and should not gain new business semantics.
+- Sandbox GunUI pages under `src/frontend/public/gunui/` are experimental unless they render backend directive envelopes directly.
+- Governance and runtime outcomes append ledger records with correlation, causation, decision status, and outcome status for replay.
 
 ---
 

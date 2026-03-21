@@ -153,6 +153,7 @@ async def test_directive_runtime_emits_decision_and_execution_readiness():
     assert result.decision.status == "ALLOWED"
     assert result.response == {"handled": "corr-runtime-1"}
     assert [event.topic for event in bus.events] == ["governance.decision", "execution.readiness"]
+    assert result.outcome_status == "COMPLETED"
     assert all(event.correlation_id == "corr-runtime-1" for event in bus.events)
 
 
@@ -172,7 +173,48 @@ def test_directive_runtime_stops_at_pending_approval(tmp_path):
 
     assert result.decision.status == "PENDING_APPROVAL"
     assert result.response is None
+    assert result.outcome_status == "PENDING_APPROVAL"
     assert [event.topic for event in bus.events] == ["governance.decision"]
     chain = json.loads((tmp_path / "akashic.json").read_text())["chain"]
-    assert chain[-1]["payload"]["type"] == "governance_pending_approval"
+    assert chain[-1]["payload"]["type"] == "runtime_outcome"
+    assert chain[-1]["payload"]["decision_status"] == "PENDING_APPROVAL"
+    assert chain[-1]["payload"]["outcome_status"] == "PENDING_APPROVAL"
     assert chain[-1]["correlation"]["correlation_id"] == "corr-runtime-1"
+
+
+def test_directive_runtime_records_allowed_outcome(tmp_path):
+    import asyncio
+
+    ledger = AkashicRecords(db_path=str(tmp_path / "akashic.json"))
+    bus = _RecordingBus()
+    runtime = DirectiveRuntime(governance=GovernanceCore(ledger=ledger), bus=bus)
+
+    result = asyncio.run(runtime.handle_envelope(_make_envelope(), planner=_allowed_planner))
+
+    chain = json.loads((tmp_path / "akashic.json").read_text())["chain"]
+    assert result.outcome_status == "COMPLETED"
+    assert chain[-1]["payload"]["type"] == "runtime_outcome"
+    assert chain[-1]["payload"]["decision_status"] == "ALLOWED"
+    assert chain[-1]["payload"]["outcome_status"] == "COMPLETED"
+
+
+def test_directive_runtime_records_denied_outcome(tmp_path):
+    import asyncio
+
+    ledger = AkashicRecords(db_path=str(tmp_path / "akashic.json"))
+    bus = _RecordingBus()
+    runtime = DirectiveRuntime(governance=GovernanceCore(ledger=ledger), bus=bus)
+
+    result = asyncio.run(
+        runtime.handle_envelope(
+            _make_envelope(action="update_secret", resource="prod/secret/payment", environment="production"),
+            planner=_allowed_planner,
+        )
+    )
+
+    chain = json.loads((tmp_path / "akashic.json").read_text())["chain"]
+    assert result.decision.status == "DENIED"
+    assert result.outcome_status == "DENIED"
+    assert chain[-1]["payload"]["type"] == "runtime_outcome"
+    assert chain[-1]["payload"]["decision_status"] == "DENIED"
+    assert chain[-1]["payload"]["outcome_status"] == "DENIED"

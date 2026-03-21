@@ -5,8 +5,10 @@ from typing import Any, Dict
 class ActionTier(IntEnum):
     TIER_0_READ_ONLY = 0
     TIER_1_REVERSIBLE = 1
+    TIER_1_REVERSIBLE_LOW_RISK = 1
     TIER_2_EXTERNAL_IMPACT = 2
     TIER_3_SENSITIVE = 3
+    TIER_3_SENSITIVE_IRREVERSIBLE = 3
 
 
 class RiskTiering:
