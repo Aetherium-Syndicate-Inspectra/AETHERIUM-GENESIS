@@ -1,6 +1,6 @@
 # AETHERIUM-GENESIS Architecture Audit (Canonical Alignment)
 
-**Date:** 2026-03-15  
+**Date:** 2026-03-15
 **Scope:** Repository audit against `AGENTS.md` and canonical design specifications.
 
 ## Design Documents Followed
