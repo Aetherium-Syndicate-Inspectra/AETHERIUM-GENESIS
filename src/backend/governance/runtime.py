@@ -17,6 +17,8 @@ class RuntimeResult:
     response: Any = None
     outcome_status: str | None = None
     detail: str | None = None
+    record_id: str | None = None
+    outcome_metadata: Dict[str, Any] | None = None
 
 
 class DirectiveRuntime:
@@ -38,16 +40,53 @@ class DirectiveRuntime:
         await self._publish_decision(envelope, decision)
 
         if decision.status == "PENDING_APPROVAL":
-            await self.commit_runtime_outcome(envelope, decision, outcome_status="PENDING_APPROVAL", detail=decision.reason)
-            return RuntimeResult(envelope=envelope, decision=decision, outcome_status="PENDING_APPROVAL", detail=decision.reason)
+            record_id, outcome_metadata = await self.commit_runtime_outcome(
+                envelope,
+                decision,
+                outcome_status="PENDING_APPROVAL",
+                detail=decision.reason,
+            )
+            return RuntimeResult(
+                envelope=envelope,
+                decision=decision,
+                outcome_status="PENDING_APPROVAL",
+                detail=decision.reason,
+                record_id=record_id,
+                outcome_metadata=outcome_metadata,
+            )
 
         if decision.status == "DENIED":
-            await self.commit_runtime_outcome(envelope, decision, outcome_status="DENIED", detail=decision.reason)
-            return RuntimeResult(envelope=envelope, decision=decision, outcome_status="DENIED", detail=decision.reason)
+            record_id, outcome_metadata = await self.commit_runtime_outcome(
+                envelope,
+                decision,
+                outcome_status="DENIED",
+                detail=decision.reason,
+            )
+            return RuntimeResult(
+                envelope=envelope,
+                decision=decision,
+                outcome_status="DENIED",
+                detail=decision.reason,
+                record_id=record_id,
+                outcome_metadata=outcome_metadata,
+            )
 
         if planner is None:
-            await self.commit_runtime_outcome(envelope, decision, outcome_status="ALLOWED", detail="Execution planner not attached")
-            return RuntimeResult(envelope=envelope, decision=decision, outcome_status="ALLOWED", detail="Execution planner not attached")
+            detail = "Execution planner not attached"
+            record_id, outcome_metadata = await self.commit_runtime_outcome(
+                envelope,
+                decision,
+                outcome_status="ALLOWED",
+                detail=detail,
+            )
+            return RuntimeResult(
+                envelope=envelope,
+                decision=decision,
+                outcome_status="ALLOWED",
+                detail=detail,
+                record_id=record_id,
+                outcome_metadata=outcome_metadata,
+            )
 
         await self._publish_execution_readiness(envelope, decision)
         logger.info(
@@ -63,20 +102,46 @@ class DirectiveRuntime:
             response = await planner(envelope)
         except Exception as exc:
             detail = str(exc)
-            await self.commit_runtime_outcome(envelope, decision, outcome_status="ERROR", detail=detail, error=detail)
+            record_id, outcome_metadata = await self.commit_runtime_outcome(
+                envelope,
+                decision,
+                outcome_status="ERROR",
+                detail=detail,
+                error=detail,
+            )
             logger.exception(
                 "runtime_execution_failure",
                 extra={"correlation_id": envelope.correlation_id, "action": decision.action, "resource": decision.resource},
             )
-            raise
+            return RuntimeResult(
+                envelope=envelope,
+                decision=decision,
+                outcome_status="ERROR",
+                detail=detail,
+                record_id=record_id,
+                outcome_metadata=outcome_metadata,
+            )
 
         detail = "Planner completed"
-        await self.commit_runtime_outcome(envelope, decision, outcome_status="COMPLETED", detail=detail)
+        record_id, outcome_metadata = await self.commit_runtime_outcome(
+            envelope,
+            decision,
+            outcome_status="COMPLETED",
+            detail=detail,
+        )
         logger.info(
             "runtime_execution_completed",
             extra={"correlation_id": envelope.correlation_id, "action": decision.action, "resource": decision.resource},
         )
-        return RuntimeResult(envelope=envelope, decision=decision, response=response, outcome_status="COMPLETED", detail=detail)
+        return RuntimeResult(
+            envelope=envelope,
+            decision=decision,
+            response=response,
+            outcome_status="COMPLETED",
+            detail=detail,
+            record_id=record_id,
+            outcome_metadata=outcome_metadata,
+        )
 
     async def commit_runtime_outcome(
         self,
@@ -87,35 +152,59 @@ class DirectiveRuntime:
         detail: str,
         error: str | None = None,
         actor: str = "runtime",
-    ) -> str | None:
+    ) -> tuple[str | None, Dict[str, Any]]:
+        outcome_metadata = self._build_outcome_metadata(
+            envelope,
+            decision,
+            outcome_status=outcome_status,
+            detail=detail,
+            error=error,
+            actor=actor,
+        )
         if not self.governance.ledger:
-            return None
-        return self.governance.ledger.append_record(
-            payload={
-                "type": "runtime_outcome",
-                "event_type": "runtime_outcome",
-                "correlation_id": envelope.correlation_id,
-                "causation_id": envelope.envelope_id,
-                "trace_id": envelope.trace_id,
-                "action": decision.action,
-                "resource": decision.resource,
-                "decision_status": decision.status,
-                "outcome_status": outcome_status,
-                "detail": detail,
-                "error": error,
-                "actor": actor,
-                "origin": envelope.origin.model_dump(mode="json"),
-                "replayable": True,
-            },
+            return None, outcome_metadata
+        record_id = self.governance.ledger.append_record(
+            payload=outcome_metadata,
             actor=actor,
             intent_id=decision.ticket_id or envelope.correlation_id,
             causal_link=envelope.envelope_id,
-            correlation={
-                "correlation_id": envelope.correlation_id,
-                "causation_id": envelope.envelope_id,
-                "trace_id": envelope.trace_id,
-            },
+            correlation=outcome_metadata["correlation"],
         )
+        return record_id, outcome_metadata
+
+    def _build_outcome_metadata(
+        self,
+        envelope: AetherEvent,
+        decision: GovernanceDecision,
+        *,
+        outcome_status: str,
+        detail: str,
+        error: str | None = None,
+        actor: str = "runtime",
+    ) -> Dict[str, Any]:
+        correlation = {
+            "correlation_id": envelope.correlation_id,
+            "causation_id": envelope.envelope_id,
+            "trace_id": envelope.trace_id,
+        }
+        return {
+            "type": "runtime_outcome",
+            "event_type": "runtime_outcome",
+            "correlation_id": envelope.correlation_id,
+            "causation_id": envelope.envelope_id,
+            "trace_id": envelope.trace_id,
+            "action": decision.action,
+            "resource": decision.resource,
+            "decision_status": decision.status,
+            "outcome_status": outcome_status,
+            "detail": detail,
+            "error": error,
+            "actor": actor,
+            "origin": envelope.origin.model_dump(mode="json"),
+            "replayable": True,
+            "memory_stage": "committed",
+            "correlation": correlation,
+        }
 
     async def _publish_decision(self, envelope: AetherEvent, decision: GovernanceDecision) -> None:
         policy_effect = decision.policy_effect or (

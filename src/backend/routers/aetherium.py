@@ -42,6 +42,42 @@ def _context_block(event: AetherEvent, *, directive_state: dict[str, Any], gover
     }
 
 
+def _governance_block(
+    *,
+    decision: str,
+    risk_tier: str | None = None,
+    policy_effect: str | None = None,
+    approval_ticket_id: str | None = None,
+    policy_mode: str = "enforce",
+) -> dict[str, Any]:
+    return {
+        "decision": decision,
+        "risk_tier": risk_tier,
+        "policy_effect": policy_effect,
+        "approval_ticket_id": approval_ticket_id,
+        "policy_mode": policy_mode,
+        "validated": True,
+    }
+
+
+def _memory_block(
+    *,
+    event: AetherEvent,
+    ledger_event_type: str,
+    record_id: str | None = None,
+    replayable: bool = True,
+) -> dict[str, Any]:
+    return {
+        "ledger_event_type": ledger_event_type,
+        "causal_chain": [event.correlation_id],
+        "replayable": replayable,
+        "correlation_id": event.correlation_id,
+        "causation_id": event.envelope_id,
+        "trace_id": event.trace_id,
+        "record_id": record_id,
+    }
+
+
 def _directive_state(event: AetherEvent, *, lifecycle_stage: str | None = None, sandbox: bool = False) -> dict[str, Any]:
     return ManifestationDirectiveState(
         correlation_id=event.correlation_id,
@@ -273,15 +309,19 @@ async def stream_endpoint(websocket: WebSocket):
                     try:
                         runtime_result = await directive_runtime.handle_envelope(ingress_envelope, planner=governed_planner)
                         directive_state = _directive_state(ingress_envelope, lifecycle_stage="runtime")
-                        governance_block = {
-                            "decision": runtime_result.decision.status,
-                            "risk_tier": runtime_result.decision.risk_tier.name,
-                            "policy_effect": runtime_result.decision.policy_effect or ("DENY" if runtime_result.decision.status == "DENIED" else "REQUIRE_APPROVAL" if runtime_result.decision.status == "PENDING_APPROVAL" else "ALLOW"),
-                            "approval_ticket_id": runtime_result.decision.ticket_id,
-                            "policy_mode": runtime_result.decision.policy_mode,
-                            "validated": True,
-                        }
+                        governance_block = _governance_block(
+                            decision=runtime_result.decision.status,
+                            risk_tier=runtime_result.decision.risk_tier.name,
+                            policy_effect=runtime_result.decision.policy_effect or ("DENY" if runtime_result.decision.status == "DENIED" else "REQUIRE_APPROVAL" if runtime_result.decision.status == "PENDING_APPROVAL" else "ALLOW"),
+                            approval_ticket_id=runtime_result.decision.ticket_id,
+                            policy_mode=runtime_result.decision.policy_mode,
+                        )
                         context_block = _context_block(ingress_envelope, directive_state=directive_state, governance=governance_block, ledger_event_type="runtime_outcome")
+                        runtime_memory = _memory_block(
+                            event=ingress_envelope,
+                            ledger_event_type="runtime_outcome",
+                            record_id=runtime_result.record_id,
+                        )
                         if runtime_result.decision.status == "PENDING_APPROVAL":
                             await bus.publish(
                                 AetherEvent(
@@ -297,10 +337,15 @@ async def stream_endpoint(websocket: WebSocket):
                                         "status": _status_block("PENDING_APPROVAL", "governance"),
                                         "approval_ticket_id": runtime_result.decision.ticket_id,
                                         "reason": runtime_result.decision.reason,
+                                        "runtime_outcome": runtime_result.outcome_metadata,
                                         **context_block,
                                     },
                                     governance=governance_block,
-                                    memory={"ledger_event_type": "governance_pending_approval", "causal_chain": [ingress_envelope.correlation_id], "replayable": True},
+                                    memory=_memory_block(
+                                        event=ingress_envelope,
+                                        ledger_event_type="governance_pending_approval",
+                                        record_id=runtime_result.record_id,
+                                    ),
                                 )
                             )
                             return
@@ -318,11 +363,39 @@ async def stream_endpoint(websocket: WebSocket):
                                     payload={
                                         "error": runtime_result.decision.reason,
                                         "status": _status_block("DENIED", "governance"),
+                                        "runtime_outcome": runtime_result.outcome_metadata,
                                         **context_block,
                                     },
                                     governance=governance_block,
-                                    memory={"ledger_event_type": "governance_denied", "causal_chain": [ingress_envelope.correlation_id], "replayable": True},
+                                    memory=_memory_block(
+                                        event=ingress_envelope,
+                                        ledger_event_type="governance_denied",
+                                        record_id=runtime_result.record_id,
+                                    ),
                                     error=runtime_result.decision.reason,
+                                )
+                            )
+                            return
+                        if runtime_result.outcome_status == "ERROR":
+                            await bus.publish(
+                                AetherEvent(
+                                    type=AetherEventType.DEGRADATION,
+                                    session_id=session_id,
+                                    topic="runtime.error",
+                                    correlation_id=ingress_envelope.correlation_id,
+                                    causation_id=ingress_envelope.envelope_id,
+                                    trace_id=ingress_envelope.trace_id,
+                                    origin={"service": "genesis_core", "subsystem": "mind", "channel": "planner"},
+                                    target={"service": "client", "subsystem": "manifestation", "channel": session_id},
+                                    payload={
+                                        "error": runtime_result.detail,
+                                        "status": _status_block("ERROR", "runtime"),
+                                        "runtime_outcome": runtime_result.outcome_metadata,
+                                        **context_block,
+                                    },
+                                    governance=governance_block,
+                                    memory=runtime_memory,
+                                    error=runtime_result.detail,
                                 )
                             )
                             return
@@ -342,10 +415,15 @@ async def stream_endpoint(websocket: WebSocket):
                                     payload={
                                         "system_intent": response_intent.model_dump(),
                                         "status": _status_block(runtime_result.outcome_status or "COMPLETED", "manifestation"),
+                                        "runtime_outcome": runtime_result.outcome_metadata,
                                         **context_block,
                                     },
                                     governance=governance_block,
-                                    memory={"ledger_event_type": "manifestation_emit", "causal_chain": [ingress_envelope.correlation_id], "replayable": True},
+                                    memory=_memory_block(
+                                        event=ingress_envelope,
+                                        ledger_event_type="manifestation_emit",
+                                        record_id=runtime_result.record_id,
+                                    ),
                                 )
                             )
                     except Exception as exc:
@@ -360,16 +438,30 @@ async def stream_endpoint(websocket: WebSocket):
                                 trace_id=ingress_envelope.trace_id,
                                 origin={"service": "api", "subsystem": "body", "channel": session_id},
                                 target={"service": "client", "subsystem": "manifestation", "channel": session_id},
-                                payload={
-                                    "error": str(exc),
-                                    "status": _status_block("ERROR", "runtime"),
-                                    **_context_block(ingress_envelope, directive_state=_directive_state(ingress_envelope, lifecycle_stage="error"), ledger_event_type="runtime_outcome"),
-                                },
-                                governance={"decision": "DENIED", "policy_effect": "ERROR", "validated": True},
-                                memory={"ledger_event_type": "runtime_outcome", "causal_chain": [ingress_envelope.correlation_id], "replayable": True},
-                                error=str(exc),
+                                    payload={
+                                        "error": str(exc),
+                                        "status": _status_block("ERROR", "runtime"),
+                                        "runtime_outcome": {
+                                            "type": "runtime_outcome",
+                                            "event_type": "runtime_outcome",
+                                            "correlation_id": ingress_envelope.correlation_id,
+                                            "causation_id": ingress_envelope.envelope_id,
+                                            "trace_id": ingress_envelope.trace_id,
+                                            "action": ingress_envelope.payload.get("action"),
+                                            "resource": ingress_envelope.payload.get("resource"),
+                                            "decision_status": "ERROR",
+                                            "outcome_status": "ERROR",
+                                            "detail": str(exc),
+                                            "replayable": True,
+                                            "memory_stage": "not_committed",
+                                        },
+                                        **_context_block(ingress_envelope, directive_state=_directive_state(ingress_envelope, lifecycle_stage="error"), ledger_event_type="runtime_outcome"),
+                                    },
+                                    governance=_governance_block(decision="ERROR", policy_effect="ERROR"),
+                                    memory=_memory_block(event=ingress_envelope, ledger_event_type="runtime_outcome"),
+                                    error=str(exc),
+                                )
                             )
-                        )
 
                 asyncio.create_task(process_task())
 
