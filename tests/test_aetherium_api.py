@@ -65,10 +65,16 @@ def test_aetherium_flow():
                         assert msg["directive_state"]["trace_id"] == "trace-client-1"
                         assert msg["frontend_contract"] == "render-only"
                         assert msg["directive_state"]["manifest_version"] == "2026.03-manifestation-v1"
+                        assert msg["status"] == {"phase": "intent_ingress", "label": "RECEIVED"}
+                    if msg["topic"] == "governance.decision":
+                        assert msg["directive_state"]["correlation_id"] == "corr-client-1"
+                        assert msg["status"]["label"] in {"ALLOWED", "PENDING_APPROVAL", "DENIED"}
+                        assert msg["payload"]["memory"]["ledger_event_type"].startswith("governance_")
                     if msg["type"] == "manifestation":
                         assert msg["directive_state"]["correlation_id"] == "corr-client-1"
                         assert msg["directive_state"]["trace_id"] == "trace-client-1"
                         assert msg["directive_state"]["manifest_version"] == "2026.03-manifestation-v1"
+                        assert msg["payload"]["memory"]["ledger_event_type"] == "runtime_outcome"
                         break
                     if msg["type"] == "degradation":
                         break

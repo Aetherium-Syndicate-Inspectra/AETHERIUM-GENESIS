@@ -142,7 +142,8 @@ async def startup_event():
     await aether_bus.connect()
     app.state.aether_bus = aether_bus
     app.state.engine = engine # Expose engine to router
-    app.state.directive_runtime = DirectiveRuntime(governance=GovernanceCore(ledger=engine.lifecycle.ledger), bus=aether_bus)
+    app.state.governance = GovernanceCore(ledger=engine.lifecycle.ledger)
+    app.state.directive_runtime = DirectiveRuntime(governance=app.state.governance, bus=aether_bus)
 
     # Initialize Security & Metrics
     app.state.key_manager = KeyManager()
@@ -245,6 +246,7 @@ async def websocket_v2_endpoint(websocket: WebSocket):
     Please migrate to /v1/session + /ws/v3/stream (Aetherium Protocol).
     """
     await websocket.accept()
+    logger.warning("Deprecated websocket adapter in use: /ws/v2/stream -> migrate clients to /ws/v3/stream")
     logger.info("V2 Client connected")
     session_id = str(id(websocket))
 
@@ -351,6 +353,7 @@ async def websocket_endpoint(websocket: WebSocket):
     """
     await websocket.accept()
     clients.add(websocket)
+    logger.warning("Deprecated websocket adapter in use: /ws -> migrate clients to /ws/v3/stream")
     logger.info("Client connected")
 
     # Session ID for state persistence (simple IP-based or random)

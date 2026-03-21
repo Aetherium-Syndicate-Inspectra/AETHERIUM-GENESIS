@@ -24,6 +24,24 @@ logger = logging.getLogger("AetheriumAPI")
 MANIFEST_VERSION = "2026.03-manifestation-v1"
 
 
+def _status_block(label: str, phase: str) -> dict[str, Any]:
+    return {"phase": phase, "label": label}
+
+
+def _context_block(event: AetherEvent, *, directive_state: dict[str, Any], governance: dict[str, Any] | None = None, ledger_event_type: str | None = None) -> dict[str, Any]:
+    return {
+        "directive_state": directive_state,
+        "governance": governance or {},
+        "memory": {
+            "ledger_event_type": ledger_event_type,
+            "correlation_id": event.correlation_id,
+            "causation_id": event.causation_id or event.envelope_id,
+            "trace_id": event.trace_id,
+            "replayable": True,
+        },
+    }
+
+
 def _directive_state(event: AetherEvent, *, lifecycle_stage: str | None = None, sandbox: bool = False) -> dict[str, Any]:
     return ManifestationDirectiveState(
         correlation_id=event.correlation_id,
@@ -71,6 +89,7 @@ def _validate_ingress_envelope(raw_payload: Dict[str, Any], session_id: str) -> 
     payload = {
         "client_message": raw_payload,
         "text": text,
+        "status": _status_block("RECEIVED", "intent_ingress"),
         "directive_state": {
             "session_id": session_id,
             "manifest_version": MANIFEST_VERSION,
@@ -201,7 +220,7 @@ async def stream_endpoint(websocket: WebSocket):
             payload={
                 "state": {"state": "connected", "confidence": 1.0, "energy": 1.0, "coherence": 1.0},
                 "directive_state": {**handshake_correlation, "manifest_version": MANIFEST_VERSION, "semantic_source": "backend"},
-                "status": {"phase": "connected", "label": "connected"},
+                "status": _status_block("CONNECTED", "handshake"),
                 "diagnostics": {"bridge": "ws_v3", "frontend_contract": "render-only"},
             },
             state=StateData(state="connected", confidence=1.0, energy=1.0, coherence=1.0),
@@ -253,6 +272,16 @@ async def stream_endpoint(websocket: WebSocket):
                 async def process_task() -> None:
                     try:
                         runtime_result = await directive_runtime.handle_envelope(ingress_envelope, planner=governed_planner)
+                        directive_state = _directive_state(ingress_envelope, lifecycle_stage="runtime")
+                        governance_block = {
+                            "decision": runtime_result.decision.status,
+                            "risk_tier": runtime_result.decision.risk_tier.name,
+                            "policy_effect": runtime_result.decision.policy_effect or ("DENY" if runtime_result.decision.status == "DENIED" else "REQUIRE_APPROVAL" if runtime_result.decision.status == "PENDING_APPROVAL" else "ALLOW"),
+                            "approval_ticket_id": runtime_result.decision.ticket_id,
+                            "policy_mode": runtime_result.decision.policy_mode,
+                            "validated": True,
+                        }
+                        context_block = _context_block(ingress_envelope, directive_state=directive_state, governance=governance_block, ledger_event_type="runtime_outcome")
                         if runtime_result.decision.status == "PENDING_APPROVAL":
                             await bus.publish(
                                 AetherEvent(
@@ -265,27 +294,13 @@ async def stream_endpoint(websocket: WebSocket):
                                     origin={"service": "governance", "subsystem": "kernel", "channel": session_id},
                                     target={"service": "client", "subsystem": "manifestation", "channel": session_id},
                                     payload={
-                                        "status": "PENDING_APPROVAL",
+                                        "status": _status_block("PENDING_APPROVAL", "governance"),
                                         "approval_ticket_id": runtime_result.decision.ticket_id,
                                         "reason": runtime_result.decision.reason,
-                                        "directive_state": {
-                                            "correlation_id": ingress_envelope.correlation_id,
-                                            "causation_id": ingress_envelope.envelope_id,
-                                            "trace_id": ingress_envelope.trace_id,
-                                        },
+                                        **context_block,
                                     },
-                                    governance={
-                                        "decision": "PENDING_APPROVAL",
-                                        "risk_tier": runtime_result.decision.risk_tier.name,
-                                        "policy_effect": runtime_result.decision.policy_effect or "REQUIRE_APPROVAL",
-                                        "approval_ticket_id": runtime_result.decision.ticket_id,
-                                        "policy_mode": runtime_result.decision.policy_mode,
-                                        "validated": True,
-                                    },
-                                    memory={
-                                        "ledger_event_type": "governance_pending_approval",
-                                        "causal_chain": [ingress_envelope.correlation_id],
-                                    },
+                                    governance=governance_block,
+                                    memory={"ledger_event_type": "governance_pending_approval", "causal_chain": [ingress_envelope.correlation_id], "replayable": True},
                                 )
                             )
                             return
@@ -302,23 +317,11 @@ async def stream_endpoint(websocket: WebSocket):
                                     target={"service": "client", "subsystem": "manifestation", "channel": session_id},
                                     payload={
                                         "error": runtime_result.decision.reason,
-                                        "directive_state": {
-                                            "correlation_id": ingress_envelope.correlation_id,
-                                            "causation_id": ingress_envelope.envelope_id,
-                                            "trace_id": ingress_envelope.trace_id,
-                                        },
+                                        "status": _status_block("DENIED", "governance"),
+                                        **context_block,
                                     },
-                                    governance={
-                                        "decision": "DENIED",
-                                        "risk_tier": runtime_result.decision.risk_tier.name,
-                                        "policy_effect": runtime_result.decision.policy_effect or "DENY",
-                                        "policy_mode": runtime_result.decision.policy_mode,
-                                        "validated": True,
-                                    },
-                                    memory={
-                                        "ledger_event_type": "governance_denied",
-                                        "causal_chain": [ingress_envelope.correlation_id],
-                                    },
+                                    governance=governance_block,
+                                    memory={"ledger_event_type": "governance_denied", "causal_chain": [ingress_envelope.correlation_id], "replayable": True},
                                     error=runtime_result.decision.reason,
                                 )
                             )
@@ -338,23 +341,11 @@ async def stream_endpoint(websocket: WebSocket):
                                     target={"service": "client", "subsystem": "manifestation", "channel": session_id},
                                     payload={
                                         "system_intent": response_intent.model_dump(),
-                                        "directive_state": {
-                                            "correlation_id": ingress_envelope.correlation_id,
-                                            "causation_id": ingress_envelope.envelope_id,
-                                            "trace_id": ingress_envelope.trace_id,
-                                        },
+                                        "status": _status_block(runtime_result.outcome_status or "COMPLETED", "manifestation"),
+                                        **context_block,
                                     },
-                                    governance={
-                                        "decision": runtime_result.decision.status,
-                                        "risk_tier": runtime_result.decision.risk_tier.name,
-                                        "policy_effect": runtime_result.decision.policy_effect or "ALLOW",
-                                        "policy_mode": runtime_result.decision.policy_mode,
-                                        "validated": True,
-                                    },
-                                    memory={
-                                        "ledger_event_type": "manifestation_emit",
-                                        "causal_chain": [ingress_envelope.correlation_id],
-                                    },
+                                    governance=governance_block,
+                                    memory={"ledger_event_type": "manifestation_emit", "causal_chain": [ingress_envelope.correlation_id], "replayable": True},
                                 )
                             )
                     except Exception as exc:
@@ -371,12 +362,11 @@ async def stream_endpoint(websocket: WebSocket):
                                 target={"service": "client", "subsystem": "manifestation", "channel": session_id},
                                 payload={
                                     "error": str(exc),
-                                    "directive_state": {
-                                        "correlation_id": ingress_envelope.correlation_id,
-                                        "causation_id": ingress_envelope.envelope_id,
-                                        "trace_id": ingress_envelope.trace_id,
-                                    },
+                                    "status": _status_block("ERROR", "runtime"),
+                                    **_context_block(ingress_envelope, directive_state=_directive_state(ingress_envelope, lifecycle_stage="error"), ledger_event_type="runtime_outcome"),
                                 },
+                                governance={"decision": "DENIED", "policy_effect": "ERROR", "validated": True},
+                                memory={"ledger_event_type": "runtime_outcome", "causal_chain": [ingress_envelope.correlation_id], "replayable": True},
                                 error=str(exc),
                             )
                         )
