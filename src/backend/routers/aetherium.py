@@ -74,7 +74,7 @@ def _memory_block(
         "correlation_id": event.correlation_id,
         "causation_id": event.envelope_id,
         "trace_id": event.trace_id,
-        "record_id": record_id,
+        "ledger_record_id": record_id,
     }
 
 
@@ -150,6 +150,77 @@ def _validate_ingress_envelope(raw_payload: Dict[str, Any], session_id: str) -> 
 
 def _manifestation_payload(event: AetherEvent, *, lifecycle_stage: str | None = None) -> str:
     return json.dumps(_manifestation_bridge_payload(event, lifecycle_stage=lifecycle_stage))
+
+
+
+
+def _runtime_policy_effect(runtime_result) -> str:
+    return runtime_result.decision.policy_effect or (
+        "DENY"
+        if runtime_result.decision.status == "DENIED"
+        else "REQUIRE_APPROVAL"
+        if runtime_result.decision.status == "PENDING_APPROVAL"
+        else "ALLOW"
+    )
+
+
+async def _publish_runtime_state(
+    *,
+    bus,
+    session_id: str,
+    ingress_envelope: AetherEvent,
+    runtime_result,
+    topic: str,
+    event_type: AetherEventType,
+    phase: str,
+    label: str,
+    ledger_event_type: str,
+    origin: dict[str, Any],
+    error: str | None = None,
+    extra_payload: dict[str, Any] | None = None,
+) -> None:
+    directive_state = _directive_state(ingress_envelope, lifecycle_stage=phase)
+    governance_block = _governance_block(
+        decision=runtime_result.decision.status,
+        risk_tier=runtime_result.decision.risk_tier.name,
+        policy_effect=_runtime_policy_effect(runtime_result),
+        approval_ticket_id=runtime_result.decision.ticket_id,
+        policy_mode=runtime_result.decision.policy_mode,
+    )
+    context_block = _context_block(
+        ingress_envelope,
+        directive_state=directive_state,
+        governance=governance_block,
+        ledger_event_type="runtime_outcome",
+    )
+    memory_block = _memory_block(
+        event=ingress_envelope,
+        ledger_event_type=ledger_event_type,
+        record_id=runtime_result.record_id,
+    )
+    payload = {
+        "status": _status_block(label, phase),
+        "runtime_outcome": runtime_result.outcome_metadata,
+        **context_block,
+    }
+    if extra_payload:
+        payload.update(extra_payload)
+    await bus.publish(
+        AetherEvent(
+            type=event_type,
+            session_id=session_id,
+            topic=topic,
+            correlation_id=ingress_envelope.correlation_id,
+            causation_id=ingress_envelope.envelope_id,
+            trace_id=ingress_envelope.trace_id,
+            origin=origin,
+            target={"service": "client", "subsystem": "manifestation", "channel": session_id},
+            payload=payload,
+            governance=governance_block,
+            memory=memory_block,
+            error=error,
+        )
+    )
 
 
 router = APIRouter(tags=["aetherium"])
@@ -308,95 +379,54 @@ async def stream_endpoint(websocket: WebSocket):
                 async def process_task() -> None:
                     try:
                         runtime_result = await directive_runtime.handle_envelope(ingress_envelope, planner=governed_planner)
-                        directive_state = _directive_state(ingress_envelope, lifecycle_stage="runtime")
-                        governance_block = _governance_block(
-                            decision=runtime_result.decision.status,
-                            risk_tier=runtime_result.decision.risk_tier.name,
-                            policy_effect=runtime_result.decision.policy_effect or ("DENY" if runtime_result.decision.status == "DENIED" else "REQUIRE_APPROVAL" if runtime_result.decision.status == "PENDING_APPROVAL" else "ALLOW"),
-                            approval_ticket_id=runtime_result.decision.ticket_id,
-                            policy_mode=runtime_result.decision.policy_mode,
-                        )
-                        context_block = _context_block(ingress_envelope, directive_state=directive_state, governance=governance_block, ledger_event_type="runtime_outcome")
-                        runtime_memory = _memory_block(
-                            event=ingress_envelope,
-                            ledger_event_type="runtime_outcome",
-                            record_id=runtime_result.record_id,
-                        )
                         if runtime_result.decision.status == "PENDING_APPROVAL":
-                            await bus.publish(
-                                AetherEvent(
-                                    type=AetherEventType.STATE_UPDATE,
-                                    session_id=session_id,
-                                    topic="governance.approval.pending",
-                                    correlation_id=ingress_envelope.correlation_id,
-                                    causation_id=ingress_envelope.envelope_id,
-                                    trace_id=ingress_envelope.trace_id,
-                                    origin={"service": "governance", "subsystem": "kernel", "channel": session_id},
-                                    target={"service": "client", "subsystem": "manifestation", "channel": session_id},
-                                    payload={
-                                        "status": _status_block("PENDING_APPROVAL", "governance"),
-                                        "approval_ticket_id": runtime_result.decision.ticket_id,
-                                        "reason": runtime_result.decision.reason,
-                                        "runtime_outcome": runtime_result.outcome_metadata,
-                                        **context_block,
-                                    },
-                                    governance=governance_block,
-                                    memory=_memory_block(
-                                        event=ingress_envelope,
-                                        ledger_event_type="governance_pending_approval",
-                                        record_id=runtime_result.record_id,
-                                    ),
-                                )
+                            await _publish_runtime_state(
+                                bus=bus,
+                                session_id=session_id,
+                                ingress_envelope=ingress_envelope,
+                                runtime_result=runtime_result,
+                                topic="governance.approval.pending",
+                                event_type=AetherEventType.STATE_UPDATE,
+                                phase="governance",
+                                label="PENDING_APPROVAL",
+                                ledger_event_type="governance_pending_approval",
+                                origin={"service": "governance", "subsystem": "kernel", "channel": session_id},
+                                extra_payload={
+                                    "approval_ticket_id": runtime_result.decision.ticket_id,
+                                    "reason": runtime_result.decision.reason,
+                                },
                             )
                             return
                         if runtime_result.decision.status == "DENIED":
-                            await bus.publish(
-                                AetherEvent(
-                                    type=AetherEventType.DEGRADATION,
-                                    session_id=session_id,
-                                    topic="governance.denied",
-                                    correlation_id=ingress_envelope.correlation_id,
-                                    causation_id=ingress_envelope.envelope_id,
-                                    trace_id=ingress_envelope.trace_id,
-                                    origin={"service": "governance", "subsystem": "kernel", "channel": session_id},
-                                    target={"service": "client", "subsystem": "manifestation", "channel": session_id},
-                                    payload={
-                                        "error": runtime_result.decision.reason,
-                                        "status": _status_block("DENIED", "governance"),
-                                        "runtime_outcome": runtime_result.outcome_metadata,
-                                        **context_block,
-                                    },
-                                    governance=governance_block,
-                                    memory=_memory_block(
-                                        event=ingress_envelope,
-                                        ledger_event_type="governance_denied",
-                                        record_id=runtime_result.record_id,
-                                    ),
-                                    error=runtime_result.decision.reason,
-                                )
+                            await _publish_runtime_state(
+                                bus=bus,
+                                session_id=session_id,
+                                ingress_envelope=ingress_envelope,
+                                runtime_result=runtime_result,
+                                topic="governance.denied",
+                                event_type=AetherEventType.DEGRADATION,
+                                phase="governance",
+                                label="DENIED",
+                                ledger_event_type="governance_denied",
+                                origin={"service": "governance", "subsystem": "kernel", "channel": session_id},
+                                error=runtime_result.decision.reason,
+                                extra_payload={"error": runtime_result.decision.reason},
                             )
                             return
                         if runtime_result.outcome_status == "ERROR":
-                            await bus.publish(
-                                AetherEvent(
-                                    type=AetherEventType.DEGRADATION,
-                                    session_id=session_id,
-                                    topic="runtime.error",
-                                    correlation_id=ingress_envelope.correlation_id,
-                                    causation_id=ingress_envelope.envelope_id,
-                                    trace_id=ingress_envelope.trace_id,
-                                    origin={"service": "genesis_core", "subsystem": "mind", "channel": "planner"},
-                                    target={"service": "client", "subsystem": "manifestation", "channel": session_id},
-                                    payload={
-                                        "error": runtime_result.detail,
-                                        "status": _status_block("ERROR", "runtime"),
-                                        "runtime_outcome": runtime_result.outcome_metadata,
-                                        **context_block,
-                                    },
-                                    governance=governance_block,
-                                    memory=runtime_memory,
-                                    error=runtime_result.detail,
-                                )
+                            await _publish_runtime_state(
+                                bus=bus,
+                                session_id=session_id,
+                                ingress_envelope=ingress_envelope,
+                                runtime_result=runtime_result,
+                                topic="runtime.error",
+                                event_type=AetherEventType.DEGRADATION,
+                                phase="runtime",
+                                label="ERROR",
+                                ledger_event_type="runtime_outcome",
+                                origin={"service": "genesis_core", "subsystem": "mind", "channel": "planner"},
+                                error=runtime_result.detail,
+                                extra_payload={"error": runtime_result.detail},
                             )
                             return
 
@@ -416,9 +446,26 @@ async def stream_endpoint(websocket: WebSocket):
                                         "system_intent": response_intent.model_dump(),
                                         "status": _status_block(runtime_result.outcome_status or "COMPLETED", "manifestation"),
                                         "runtime_outcome": runtime_result.outcome_metadata,
-                                        **context_block,
+                                        **_context_block(
+                                            ingress_envelope,
+                                            directive_state=_directive_state(ingress_envelope, lifecycle_stage="manifestation"),
+                                            governance=_governance_block(
+                                                decision=runtime_result.decision.status,
+                                                risk_tier=runtime_result.decision.risk_tier.name,
+                                                policy_effect=_runtime_policy_effect(runtime_result),
+                                                approval_ticket_id=runtime_result.decision.ticket_id,
+                                                policy_mode=runtime_result.decision.policy_mode,
+                                            ),
+                                            ledger_event_type="runtime_outcome",
+                                        ),
                                     },
-                                    governance=governance_block,
+                                    governance=_governance_block(
+                                        decision=runtime_result.decision.status,
+                                        risk_tier=runtime_result.decision.risk_tier.name,
+                                        policy_effect=_runtime_policy_effect(runtime_result),
+                                        approval_ticket_id=runtime_result.decision.ticket_id,
+                                        policy_mode=runtime_result.decision.policy_mode,
+                                    ),
                                     memory=_memory_block(
                                         event=ingress_envelope,
                                         ledger_event_type="manifestation_emit",

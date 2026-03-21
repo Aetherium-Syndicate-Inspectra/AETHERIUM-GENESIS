@@ -19,6 +19,15 @@ class RuntimeResult:
     detail: str | None = None
     record_id: str | None = None
     outcome_metadata: Dict[str, Any] | None = None
+    error: Dict[str, Any] | None = None
+
+    @property
+    def ok(self) -> bool:
+        return self.outcome_status == "COMPLETED"
+
+    @property
+    def failed(self) -> bool:
+        return self.outcome_status == "ERROR"
 
 
 class DirectiveRuntime:
@@ -102,6 +111,11 @@ class DirectiveRuntime:
             response = await planner(envelope)
         except Exception as exc:
             detail = str(exc)
+            error_metadata = {
+                "type": type(exc).__name__,
+                "message": detail,
+                "governed": True,
+            }
             record_id, outcome_metadata = await self.commit_runtime_outcome(
                 envelope,
                 decision,
@@ -109,6 +123,8 @@ class DirectiveRuntime:
                 detail=detail,
                 error=detail,
             )
+            if outcome_metadata is not None:
+                outcome_metadata["error_context"] = error_metadata
             logger.exception(
                 "runtime_execution_failure",
                 extra={"correlation_id": envelope.correlation_id, "action": decision.action, "resource": decision.resource},
@@ -120,6 +136,7 @@ class DirectiveRuntime:
                 detail=detail,
                 record_id=record_id,
                 outcome_metadata=outcome_metadata,
+                error=error_metadata,
             )
 
         detail = "Planner completed"

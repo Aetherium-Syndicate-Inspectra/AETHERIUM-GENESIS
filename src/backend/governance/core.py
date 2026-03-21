@@ -34,6 +34,11 @@ class ApprovalDecisionResult:
     detail: str
     ticket: ApprovalTicket | None = None
 
+    def __bool__(self) -> bool:
+        raise TypeError(
+            "ApprovalDecisionResult does not support boolean coercion; use explicit status semantics."
+        )
+
 
 @dataclass
 class GovernanceEnvelopeContext:

@@ -157,6 +157,16 @@ async def _emit_deprecated_socket_warning(websocket: WebSocket, *, path: str) ->
         )
     )
 
+
+async def _accept_compatibility_socket(websocket: WebSocket, *, path: str, add_client: bool = False) -> str:
+    await websocket.accept()
+    if add_client:
+        clients.add(websocket)
+    logger.warning("Deprecated websocket adapter in use: %s -> migrate clients to %s", path, CANONICAL_STREAM_PATH)
+    await _emit_deprecated_socket_warning(websocket, path=path)
+    return str(id(websocket))
+
+
 @app.on_event("startup")
 async def startup_event():
     global auditorium
@@ -272,11 +282,8 @@ async def websocket_v2_endpoint(websocket: WebSocket):
     [DEPRECATED] WebSocket endpoint for V2 Streaming Protocol.
     Compatibility adapter only. Canonical ingress is /v1/session + /ws/v3/stream.
     """
-    await websocket.accept()
-    logger.warning("Deprecated websocket adapter in use: /ws/v2/stream -> migrate clients to /ws/v3/stream")
-    await _emit_deprecated_socket_warning(websocket, path="/ws/v2/stream")
+    session_id = await _accept_compatibility_socket(websocket, path="/ws/v2/stream")
     logger.info("V2 Client connected")
-    session_id = str(id(websocket))
 
     try:
         while True:
@@ -374,14 +381,8 @@ async def websocket_endpoint(websocket: WebSocket):
     Maintained only as a compatibility adapter for legacy clients.
     Canonical ingress is /v1/session + /ws/v3/stream.
     """
-    await websocket.accept()
-    clients.add(websocket)
-    logger.warning("Deprecated websocket adapter in use: /ws -> migrate clients to /ws/v3/stream")
-    await _emit_deprecated_socket_warning(websocket, path="/ws")
+    session_id = await _accept_compatibility_socket(websocket, path="/ws", add_client=True)
     logger.info("Client connected")
-
-    # Session ID for state persistence (simple IP-based or random)
-    session_id = str(id(websocket))
 
     try:
         while True:
