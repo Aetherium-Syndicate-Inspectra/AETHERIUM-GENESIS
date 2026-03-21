@@ -154,6 +154,27 @@ async def _failing_planner(envelope):
     raise RuntimeError(f"planner failed for {envelope.correlation_id}")
 
 
+
+
+def test_approval_decision_result_rejects_boolean_coercion():
+    governance = GovernanceCore(config={"auto_approve_tier_1": False})
+    governance.request_approval(
+        ApprovalRequest(
+            request_id="approval-bool-1",
+            tier=ActionTier.TIER_2_EXTERNAL_IMPACT,
+            actor="tester",
+            intent_id="intent-bool-1",
+            action_type="send_email",
+            resource="customer.outbound",
+            preview_data={"real_world": True},
+        )
+    )
+
+    result = governance.handle_approval("approval-bool-1", "APPROVED")
+
+    with pytest.raises(TypeError):
+        bool(result)
+
 def test_governance_builds_full_envelope_context():
     governance = GovernanceCore()
     envelope = _make_envelope(environment="production")
@@ -260,6 +281,10 @@ def test_directive_runtime_records_error_outcome_without_raising(tmp_path):
 
     chain = json.loads((tmp_path / "akashic.json").read_text())["chain"]
     assert result.outcome_status == "ERROR"
+    assert result.failed is True
+    assert result.error is not None
+    assert result.error["type"] == "RuntimeError"
+    assert result.error["governed"] is True
     assert "planner failed" in (result.detail or "")
     assert chain[-1]["payload"]["type"] == "runtime_outcome"
     assert chain[-1]["payload"]["decision_status"] == "ALLOWED"

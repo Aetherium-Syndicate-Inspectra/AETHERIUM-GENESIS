@@ -58,27 +58,86 @@ The diagram below is organized around the persisted runtime/data model that back
 แผนภาพด้านล่างจัดตามโครงสร้างข้อมูลที่ runtime ใช้งานจริง ได้แก่ ingress envelopes, governance decisions, approval state, chain blocks ของ Akashic แบบ append-only, memory projections และ manifestation views
 
 ```mermaid
-flowchart TD
-    intent[Intent Input<br/>human / system / API]
-    ingress[Ingress Layer<br/>FastAPI + WebSocket]
-    envelope[AetherEvent Envelope<br/>correlation_id / trace_id / actor / scope]
-    runtime[Directive Runtime<br/>policy decision + outcome orchestration]
-    approvals[(approval_state<br/>request_id / status / risk_tier / preview_data)]
-    vessels[Execution Vessels<br/>workspace / adapters]
-    akashic[(akashic_records.chain[]<br/>timestamp / provenance / payload / correlation / prev_hash / hash)]
-    lessons[(memory projections<br/>episodes / semantic / procedures / gems)]
-    entropy[(entropy continuity<br/>hash-chain / replay joins)]
-    body[Manifestation Layer<br/>dashboard / public / sandbox UI]
+erDiagram
+    AETHER_EVENT {
+        string envelope_id PK
+        string correlation_id
+        string causation_id
+        string trace_id
+        string session_id
+        string topic
+        string event_type
+        json origin
+        json target
+        json payload
+        json governance
+        json memory
+    }
+    GOVERNANCE_DECISION {
+        string correlation_id PK
+        string decision_status
+        string risk_tier
+        string policy_effect
+        string policy_mode
+        string ticket_id
+        string action
+        string resource
+        string reason
+    }
+    APPROVAL_STATE {
+        string request_id PK
+        string intent_id
+        string action
+        string resource
+        string risk_tier
+        string decision_status
+        json preview_data
+        float created_at
+    }
+    RUNTIME_OUTCOME {
+        string correlation_id PK
+        string decision_status
+        string outcome_status
+        string action
+        string resource
+        string detail
+        string error
+        string actor
+    }
+    AKASHIC_RECORD {
+        string hash PK
+        string prev_hash
+        float timestamp
+        json payload
+        json provenance
+        json correlation
+    }
+    MEMORY_PROJECTION {
+        string projection_id PK
+        string source_hash
+        string projection_type
+        json projection_payload
+    }
+    MANIFESTATION_VIEW {
+        string correlation_id PK
+        string session_id
+        string status_label
+        string lifecycle_stage
+        json directive_state
+        json governance
+        json replay
+    }
 
-    intent --> ingress --> envelope --> runtime
-    runtime -->|PENDING_APPROVAL| approvals
-    runtime -->|DENIED / REJECTED / ERROR outcome| akashic
-    runtime -->|ALLOWED| vessels
-    approvals -->|decision event| akashic
-    vessels -->|execution outcome| akashic
-    akashic --> lessons
-    entropy --> lessons
-    lessons --> body
+    AETHER_EVENT ||--|| GOVERNANCE_DECISION : evaluated_as
+    GOVERNANCE_DECISION ||--o| APPROVAL_STATE : opens
+    GOVERNANCE_DECISION ||--|| RUNTIME_OUTCOME : resolves_into
+    AETHER_EVENT ||--o{ AKASHIC_RECORD : committed_as
+    APPROVAL_STATE ||--o{ AKASHIC_RECORD : approval_events
+    RUNTIME_OUTCOME ||--o{ AKASHIC_RECORD : outcome_events
+    AKASHIC_RECORD ||--o{ MEMORY_PROJECTION : projects
+    AETHER_EVENT ||--o| MANIFESTATION_VIEW : manifests
+    GOVERNANCE_DECISION ||--o| MANIFESTATION_VIEW : governs
+    RUNTIME_OUTCOME ||--o| MANIFESTATION_VIEW : annotates
 ```
 
 ---
@@ -183,11 +242,6 @@ pytest -q tests/test_aetherium_api.py tests/test_governance_runtime.py tests/tes
 - `/gunui/*` is a compatibility mount; sandbox-facing usage should move to `/sandbox/gunui/*`.
 - Duplicate backend roots outside `genesis_core` remain for compatibility and should avoid new business logic unless required for migration.
 
-### Follow-up still needed
-
-- Migrate more adapters from compatibility roots into `src/backend/genesis_core/*`.
-- Replace file-backed approval/key persistence with production-grade storage.
-- Expand replay/audit APIs so frontend dashboards can consume backend-authored history directly.
 
 See also: [LEGACY.md](LEGACY.md) for the canonical vs legacy vs sandbox matrix.
 
