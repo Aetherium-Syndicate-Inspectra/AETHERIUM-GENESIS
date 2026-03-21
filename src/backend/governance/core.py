@@ -34,9 +34,6 @@ class ApprovalDecisionResult:
     detail: str
     ticket: ApprovalTicket | None = None
 
-    def __bool__(self) -> bool:
-        return self.status == "APPROVED"
-
 
 @dataclass
 class GovernanceEnvelopeContext:
@@ -253,6 +250,12 @@ class GovernanceCore:
     def request_approval(self, request: ApprovalRequest) -> bool:
         if request.tier <= ActionTier.TIER_0_READ_ONLY:
             request.status = "ALLOWED"
+            self._record_approval_result(
+                request,
+                "ALLOWED",
+                "Read-only action allowed without approval",
+                event_type="approval_allowed",
+            )
             return True
 
         if request.tier == ActionTier.TIER_1_REVERSIBLE and self.config.get("auto_approve_tier_1", True):
@@ -296,6 +299,98 @@ class GovernanceCore:
         self._record_approval_decision(ticket, result)
         logger.info("approval_decision_recorded", extra={"request_id": request_id, "decision": normalized_decision, "action": ticket.action, "resource": ticket.resource})
         return result
+
+    def _record(self, event_type, decision, policy, correlation, envelope_context=None):
+        if not self.ledger:
+            return
+        payload = {
+            "type": event_type,
+            "event_type": event_type,
+            "decision_status": getattr(decision, "status", None),
+            "action": getattr(decision, "action", None),
+            "resource": getattr(decision, "resource", None),
+            "policy_effect": getattr(decision, "policy_effect", None),
+            "policy_mode": getattr(decision, "policy_mode", None),
+            "risk_tier": getattr(getattr(decision, "risk_tier", None), "name", None),
+            "reason": getattr(decision, "reason", None),
+            "recommendation": getattr(decision, "recommendation", None),
+            "ticket_id": getattr(decision, "ticket_id", None),
+            "correlation_id": correlation.get("correlation_id"),
+            "causation_id": correlation.get("causation_id"),
+            "trace_id": correlation.get("trace_id"),
+            "envelope_context": asdict(envelope_context) if envelope_context else None,
+            "policy_snapshot": {
+                "effect": getattr(policy, "effect", None),
+                "reason": getattr(policy, "reason", None),
+                "mode": getattr(policy, "mode", None),
+            },
+            "replayable": True,
+        }
+        self.ledger.append_record(
+            payload=payload,
+            actor="governance",
+            intent_id=getattr(decision, "ticket_id", None) or correlation.get("correlation_id"),
+            causal_link=correlation.get("causation_id"),
+            correlation=correlation,
+        )
+
+    def _record_approval_result(self, request: ApprovalRequest, status: str, detail: str, *, event_type: str) -> None:
+        if not self.ledger:
+            return
+        correlation = CorrelationPolicy.build(
+            correlation_id=request.intent_id,
+            causation_id=request.request_id,
+            fallback=request.intent_id or request.request_id,
+        )
+        self.ledger.append_record(
+            payload={
+                "type": "approval_state",
+                "event_type": event_type,
+                "request_id": request.request_id,
+                "intent_id": request.intent_id,
+                "action": request.action_type,
+                "resource": request.resource,
+                "risk_tier": request.tier.name,
+                "decision_status": status,
+                "detail": detail,
+                "actor": request.actor,
+                "preview_data": request.preview_data,
+                "replayable": True,
+            },
+            actor="governance",
+            intent_id=request.intent_id,
+            causal_link=request.request_id,
+            correlation=correlation,
+        )
+
+    def _record_approval_decision(self, ticket: ApprovalTicket, result: ApprovalDecisionResult) -> None:
+        if not self.ledger:
+            return
+        correlation = CorrelationPolicy.build(
+            correlation_id=ticket.ticket_id,
+            causation_id=ticket.ticket_id,
+            fallback=ticket.ticket_id,
+        )
+        self.ledger.append_record(
+            payload={
+                "type": "approval_decided",
+                "event_type": "approval_decided",
+                "request_id": result.request_id,
+                "decision_status": result.status,
+                "decision": result.decision,
+                "detail": result.detail,
+                "action": ticket.action,
+                "resource": ticket.resource,
+                "risk_tier": ticket.risk_tier.name,
+                "approval_status": ticket.status,
+                "evidence": ticket.evidence,
+                "replayable": True,
+            },
+            actor="governance",
+            intent_id=result.request_id,
+            causal_link=ticket.ticket_id,
+            correlation=correlation,
+        )
 
     def simulate_rule_promotion(self, gem: Dict[str, Any], shadow_mode: bool = True) -> Dict[str, Any]:
         promoted_rule = {

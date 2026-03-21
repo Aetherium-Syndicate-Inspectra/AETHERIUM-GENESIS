@@ -1,6 +1,6 @@
 import json
 
-from src.backend.governance.core import GovernanceCore
+from src.backend.governance.core import ApprovalRequest, GovernanceCore
 from src.backend.genesis_core.memory.akashic import AkashicRecords
 from src.backend.governance.risk_tiering import ActionTier, RiskTiering
 from src.backend.memory.fabric import MemoryFabric
@@ -74,6 +74,31 @@ def test_governance_persists_correlation_metadata(tmp_path):
     assert record["correlation"]["trace_id"] == "trace-governance"
 
 
+def test_governance_records_explicit_approval_decision_status(tmp_path):
+    ledger = AkashicRecords(db_path=str(tmp_path / "akashic.json"))
+    governance = GovernanceCore(ledger=ledger, config={"auto_approve_tier_1": False})
+    governance.request_approval(
+        ApprovalRequest(
+            request_id="approval-1",
+            tier=ActionTier.TIER_2_EXTERNAL_IMPACT,
+            actor="tester",
+            intent_id="intent-approval-1",
+            action_type="send_email",
+            resource="customer.outbound",
+            preview_data={"real_world": True},
+        )
+    )
+
+    result = governance.handle_approval("approval-1", "REJECTED")
+
+    chain = json.loads((tmp_path / "akashic.json").read_text())["chain"]
+    assert result.status == "REJECTED"
+    assert result.status != "NOT_FOUND"
+    assert chain[-1]["payload"]["type"] == "approval_decided"
+    assert chain[-1]["payload"]["decision_status"] == "REJECTED"
+    assert chain[-1]["payload"]["request_id"] == "approval-1"
+
+
 def test_memory_fabric_projection_preserves_correlation_metadata(tmp_path):
     ledger = tmp_path / "akashic.json"
     ledger.write_text(json.dumps({
@@ -123,6 +148,10 @@ def _make_envelope(**payload_overrides):
 
 async def _allowed_planner(envelope):
     return {"handled": envelope.correlation_id}
+
+
+async def _failing_planner(envelope):
+    raise RuntimeError(f"planner failed for {envelope.correlation_id}")
 
 
 def test_governance_builds_full_envelope_context():
@@ -218,3 +247,21 @@ def test_directive_runtime_records_denied_outcome(tmp_path):
     assert chain[-1]["payload"]["type"] == "runtime_outcome"
     assert chain[-1]["payload"]["decision_status"] == "DENIED"
     assert chain[-1]["payload"]["outcome_status"] == "DENIED"
+
+
+def test_directive_runtime_records_error_outcome_without_raising(tmp_path):
+    import asyncio
+
+    ledger = AkashicRecords(db_path=str(tmp_path / "akashic.json"))
+    bus = _RecordingBus()
+    runtime = DirectiveRuntime(governance=GovernanceCore(ledger=ledger), bus=bus)
+
+    result = asyncio.run(runtime.handle_envelope(_make_envelope(), planner=_failing_planner))
+
+    chain = json.loads((tmp_path / "akashic.json").read_text())["chain"]
+    assert result.outcome_status == "ERROR"
+    assert "planner failed" in (result.detail or "")
+    assert chain[-1]["payload"]["type"] == "runtime_outcome"
+    assert chain[-1]["payload"]["decision_status"] == "ALLOWED"
+    assert chain[-1]["payload"]["outcome_status"] == "ERROR"
+    assert chain[-1]["payload"]["correlation"]["correlation_id"] == "corr-runtime-1"

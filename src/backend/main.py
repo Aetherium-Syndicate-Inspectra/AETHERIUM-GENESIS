@@ -51,6 +51,8 @@ from typing import Optional
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("AetherServer")
 
+CANONICAL_STREAM_PATH = "/ws/v3/stream"
+
 # --- Gatekeeper Middleware (Rate Limiting) ---
 class GatekeeperMiddleware(BaseHTTPMiddleware):
     def __init__(self, app):
@@ -129,6 +131,31 @@ transcriber = DeepgramTranscriber(api_key=os.getenv("DEEPGRAM_API_KEY"))
 javana = JavanaKernel()
 
 clients = set()
+
+
+def _build_text_intent_packet(text: str) -> IntentPacket:
+    """Compatibility helper for deprecated websocket adapters."""
+    return IntentPacket(
+        modality="text",
+        embedding=None,
+        energy_level=0.5,
+        confidence=1.0,
+        raw_payload=text,
+    )
+
+
+async def _emit_deprecated_socket_warning(websocket: WebSocket, *, path: str) -> None:
+    """Make legacy websocket use visibly second-class without breaking compatibility."""
+    await websocket.send_text(
+        json.dumps(
+            {
+                "type": "DEPRECATION_NOTICE",
+                "path": path,
+                "canonical_path": CANONICAL_STREAM_PATH,
+                "detail": f"{path} is a compatibility adapter. Migrate to {CANONICAL_STREAM_PATH}.",
+            }
+        )
+    )
 
 @app.on_event("startup")
 async def startup_event():
@@ -243,10 +270,11 @@ async def health_broadcast_loop(bus):
 async def websocket_v2_endpoint(websocket: WebSocket):
     """
     [DEPRECATED] WebSocket endpoint for V2 Streaming Protocol.
-    Please migrate to /v1/session + /ws/v3/stream (Aetherium Protocol).
+    Compatibility adapter only. Canonical ingress is /v1/session + /ws/v3/stream.
     """
     await websocket.accept()
     logger.warning("Deprecated websocket adapter in use: /ws/v2/stream -> migrate clients to /ws/v3/stream")
+    await _emit_deprecated_socket_warning(websocket, path="/ws/v2/stream")
     logger.info("V2 Client connected")
     session_id = str(id(websocket))
 
@@ -303,13 +331,7 @@ async def websocket_v2_endpoint(websocket: WebSocket):
                     text = data.get("text", "")
                     logger.info(f"V2 Input: {text}")
 
-                    packet = IntentPacket(
-                        modality="text",
-                        embedding=None,
-                        energy_level=0.5,
-                        confidence=1.0,
-                        raw_payload=text
-                    )
+                    packet = _build_text_intent_packet(text)
                     response: LogenesisResponse = await engine.process(packet, session_id=session_id)
 
                     if response.visual_analysis:
@@ -349,11 +371,13 @@ async def websocket_v2_endpoint(websocket: WebSocket):
 async def websocket_endpoint(websocket: WebSocket):
     """
     [DEPRECATED] Legacy WebSocket endpoint.
-    Maintained for Actuator UI and Living Interface PWA compatibility.
+    Maintained only as a compatibility adapter for legacy clients.
+    Canonical ingress is /v1/session + /ws/v3/stream.
     """
     await websocket.accept()
     clients.add(websocket)
     logger.warning("Deprecated websocket adapter in use: /ws -> migrate clients to /ws/v3/stream")
+    await _emit_deprecated_socket_warning(websocket, path="/ws")
     logger.info("Client connected")
 
     # Session ID for state persistence (simple IP-based or random)
@@ -401,13 +425,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     }))
                     # -----------------------------------------------
 
-                    packet = IntentPacket(
-                        modality="text",
-                        embedding=None,
-                        energy_level=0.5,
-                        confidence=1.0,
-                        raw_payload=text
-                    )
+                    packet = _build_text_intent_packet(text)
                     response: LogenesisResponse = await engine.process(packet, session_id=session_id)
 
                     # Convert LogenesisResponse to Client Protocol
@@ -447,13 +465,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 inp = msg.get("input", {})
                 text = inp.get("text", "")
 
-                packet = IntentPacket(
-                    modality="text",
-                    embedding=None,
-                    energy_level=0.5,
-                    confidence=1.0,
-                    raw_payload=text
-                )
+                packet = _build_text_intent_packet(text)
                 response: LogenesisResponse = await engine.process(packet, session_id=session_id)
 
                 # Send back raw LogenesisResponse (PWA knows how to handle it)
@@ -489,6 +501,8 @@ async def get_manifest():
     return FileResponse(os.path.join(BASE_DIR, "src/frontend/public/manifest.json"), media_type="application/json")
 
 # 2. Mount Subdirectories
+# /sandbox/gunui is the explicit experimental/non-authoritative route.
+# /gunui remains a compatibility alias and must not gain canonical semantics.
 app.mount("/gunui", StaticFiles(directory=os.path.join(BASE_DIR, "src/frontend/public/gunui"), html=True), name="gunui")
 app.mount("/sandbox/gunui", StaticFiles(directory=os.path.join(BASE_DIR, "src/frontend/public/gunui"), html=True), name="sandbox-gunui")
 app.mount("/icons", StaticFiles(directory=os.path.join(BASE_DIR, "src/frontend/public/icons")), name="icons")
