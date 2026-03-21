@@ -51,9 +51,18 @@ async def handle_decision(decision: ApprovalDecision, request: Request):
     gov = _governance_from_request(request)
     result: ApprovalDecisionResult = gov.handle_approval(decision.request_id, decision.decision)
     if result.status == "NOT_FOUND":
-        raise HTTPException(status_code=404, detail=result.detail)
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "status": "NOT_FOUND",
+                "request_id": result.request_id,
+                "decision": result.decision,
+                "detail": result.detail,
+            },
+        )
     return {
         "status": result.status,
+        "approval_status": result.status,
         "request_id": result.request_id,
         "decision": result.decision,
         "detail": result.detail,

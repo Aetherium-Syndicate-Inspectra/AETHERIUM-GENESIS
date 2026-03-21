@@ -31,11 +31,13 @@ def test_governance_decide_distinguishes_rejected_from_not_found(tmp_path):
         rejected = client.post("/governance/decide", json={"request_id": request_id, "decision": "REJECTED"})
         assert rejected.status_code == 200
         assert rejected.json()["status"] == "REJECTED"
+        assert rejected.json()["approval_status"] == "REJECTED"
         assert rejected.json()["request_id"] == request_id
 
         not_found = client.post("/governance/decide", json={"request_id": "missing", "decision": "APPROVED"})
         assert not_found.status_code == 404
-        assert "not found" in not_found.json()["detail"].lower()
+        assert not_found.json()["detail"]["status"] == "NOT_FOUND"
+        assert "not found" in not_found.json()["detail"]["detail"].lower()
 
         chain = json.loads((tmp_path / "akashic.json").read_text())["chain"]
         assert chain[-1]["payload"]["decision_status"] == "REJECTED"

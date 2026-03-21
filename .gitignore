@@ -5,3 +5,6 @@ auth_sessions.json
 server.log
 server_verify.log
 ai_utils_package/venv/
+access_keys.json
+data/runtime/
+server_log.txt
