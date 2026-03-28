@@ -13,7 +13,7 @@ Older snapshots, forks, and sandbox-only branches may not receive coordinated fi
 
 Please report vulnerabilities **privately** before public disclosure.
 
-1. Open a private security report via your internal channel or repository security contact.
+1. Open a private security report via the "Security" tab on the GitHub repository.
 2. Include:
    - Affected component/path
    - Reproduction steps (PoC)
