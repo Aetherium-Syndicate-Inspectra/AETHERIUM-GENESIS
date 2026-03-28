@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 
 from src.backend.auth.session_manager import AuthManager
@@ -11,7 +12,7 @@ def test_auth_manager_creates_parent_directory_on_save(tmp_path: Path) -> None:
     manager.upsert_user(
         user_id="user-123",
         identity=IdentityProfile(provider="mock", sub="sub-123", email="user@example.com"),
-        tokens=TokenSet(access_token="token", expires_at=9999999999),
+        tokens=TokenSet(access_token="token", expires_at=time.time() + 86400),
     )
 
     assert store_path.exists()

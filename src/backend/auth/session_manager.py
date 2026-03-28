@@ -1,8 +1,8 @@
 import json
-import os
 import time
 import logging
-from typing import Optional, Dict
+from pathlib import Path
+from typing import Dict, Optional, Union
 from src.backend.genesis_core.models.auth import UserSession, TokenSet, IdentityProfile
 
 logger = logging.getLogger("AuthManager")
@@ -14,13 +14,13 @@ class AuthManager:
     caching in memory, updating session details, and saving back to disk.
     """
 
-    def __init__(self, filepath: str = "auth_sessions.json"):
+    def __init__(self, filepath: Union[str, Path] = "auth_sessions.json"):
         """Initializes the AuthManager.
 
         Args:
             filepath: The path to the JSON file used for session persistence.
         """
-        self.filepath = filepath
+        self.filepath = Path(filepath)
         self._cache: Dict[str, UserSession] = {}
         self._load()
 
@@ -29,10 +29,10 @@ class AuthManager:
 
         Handles missing files gracefully and logs any errors during loading.
         """
-        if not os.path.exists(self.filepath):
+        if not self.filepath.exists():
             return
         try:
-            with open(self.filepath, 'r') as f:
+            with self.filepath.open("r", encoding="utf-8") as f:
                 data = json.load(f)
                 for uid, user_data in data.items():
                     self._cache[uid] = UserSession(**user_data)
@@ -46,11 +46,9 @@ class AuthManager:
         Logs an error if the file operation fails.
         """
         try:
-            directory = os.path.dirname(self.filepath)
-            if directory:
-                os.makedirs(directory, exist_ok=True)
-            data = {uid: session.model_dump(mode='json') for uid, session in self._cache.items()}
-            with open(self.filepath, 'w') as f:
+            self.filepath.parent.mkdir(parents=True, exist_ok=True)
+            data = {uid: session.model_dump(mode="json") for uid, session in self._cache.items()}
+            with self.filepath.open("w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2)
         except Exception as e:
             logger.error(f"Failed to save auth store: {e}")
