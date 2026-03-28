@@ -2,28 +2,45 @@
 
 ## Supported Versions
 
-| Version | Supported |
-| ------- | --------- |
-| main    | ✅        |
+AETHERIUM-GENESIS is currently maintained on the default branch. Security fixes are prioritized for:
 
-## Security Notes
+- Latest commit on `main` (or current default branch)
+- Tagged releases published after `v2.3.0`
 
-### python-ecdsa Minerva timing side-channel
-
-The `python-ecdsa` project has a known timing side-channel issue (Minerva-style) affecting operations that rely on secret nonces/scalars (for example signing and ECDH on P-256). Signature verification is not affected.
-
-Because the upstream `python-ecdsa` project does not plan to harden this class of side-channel in scope, this repository avoids relying on `python-ecdsa` in runtime dependencies.
-
-Mitigation in this repository:
-- `python-jose` was removed from runtime dependencies to avoid pulling `python-ecdsa`.
-- JWT functionality should use `PyJWT[crypto]` (OpenSSL-backed `cryptography`) instead of pure-Python ECDSA stacks for production signing operations.
+Older snapshots, forks, and sandbox-only branches may not receive coordinated fixes.
 
 ## Reporting a Vulnerability
 
-Please open a private security report (or issue marked `security`) with:
-- impact summary,
-- reproducible steps,
-- affected files/modules,
-- and suggested remediation if available.
+Please report vulnerabilities **privately** before public disclosure.
 
-We will acknowledge within 72 hours and provide a remediation plan or risk-acceptance rationale.
+1. Open a private security report via your internal channel or repository security contact.
+2. Include:
+   - Affected component/path
+   - Reproduction steps (PoC)
+   - Impact assessment (data exposure, execution risk, governance bypass risk)
+   - Suggested mitigation (if available)
+3. Do not publish exploit details until a fix or mitigation is available.
+
+## Response Targets
+
+- Initial acknowledgement: within **72 hours**
+- Triage decision: within **7 business days**
+- Mitigation plan or patch timeline: as soon as impact is confirmed
+
+## Security Scope Priorities
+
+Highest-priority issues include:
+
+- Governance bypass on high-impact execution paths
+- Memory/audit tampering (Akashic/ledger integrity)
+- AuthN/AuthZ flaws in control-plane APIs
+- Remote code execution in vessel adapters or execution pipeline
+- Correlation/provenance spoofing that breaks audit traceability
+
+## Coordinated Disclosure
+
+After fix deployment, maintainers may publish:
+
+- Affected versions
+- Technical root cause summary
+- Mitigation or upgrade guidance
