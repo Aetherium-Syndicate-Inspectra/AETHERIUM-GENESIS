@@ -46,6 +46,9 @@ class AuthManager:
         Logs an error if the file operation fails.
         """
         try:
+            directory = os.path.dirname(self.filepath)
+            if directory:
+                os.makedirs(directory, exist_ok=True)
             data = {uid: session.model_dump(mode='json') for uid, session in self._cache.items()}
             with open(self.filepath, 'w') as f:
                 json.dump(data, f, indent=2)
