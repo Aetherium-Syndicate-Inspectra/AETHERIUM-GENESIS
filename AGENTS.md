@@ -22,7 +22,7 @@
 - Run unit tests: `[command]`
 - Run integration tests: `[command]`
 - Test coverage: `[command]`
-- [Specific testing patterns or requirements]
+- [Specific testing patterns or requirements, e.g., unit test coverage for critical modules > 85%]
 
 ## Code Style
 
