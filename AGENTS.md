@@ -40,9 +40,10 @@
 
 ## Pull Request Guidelines
 
-- Title format: [component] Brief description
+- Title format: `[component] Brief description` (e.g., `[docs] Update AGENTS.md`)
 - Required checks: `[lint command]`, `[test command]`
-- [Review requirements]
+- [Review requirements, e.g., at least one approval from a maintainer]
+- Link to any relevant issues in the PR description.
 
 ## Additional Notes
 
