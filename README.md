@@ -164,7 +164,7 @@ erDiagram
 
 - **Akashic block chain**: `data/akashic_records.json` ควบคุมโดย `src/backend/genesis_core/memory/akashic.py`
 - **Memory projections**: `data/memory/*` สร้างโดย `src/backend/memory/fabric.py`
-- **Gem projection state**: `data/derived_gems.json` ดูแลโดย `MemoryProjectionManager`
+- **Gem projection state**: `data/derived_gems.json` ดูแลโดย `src/backend/genesis_core/memory/akashic.py` (`MemoryProjectionManager`)
 - **Entropy ledger logical table**: อ้างอิงจาก `docs/ENTROPY_ECONOMY_TECHNICAL_SPEC_TH.md`
 
 ---
