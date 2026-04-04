@@ -43,7 +43,7 @@ class TestEndToEndGovernanceGemFlow(unittest.IsolatedAsyncioTestCase):
         self.assertIn("action", request.preview_data)  # preview exists
 
         approved = self.gov.handle_approval(request.request_id, "APPROVED")
-        self.assertTrue(approved)
+        self.assertEqual(approved.status, "APPROVED")
 
         gem = await self.reflector.reflect_on_episode(
             episode_id=f"ep-{uuid.uuid4().hex[:8]}",

@@ -1,7 +1,7 @@
 import hashlib
 import json
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID, uuid4
 
@@ -34,7 +34,7 @@ class AkashicTreasury:
 
     def append(self, user_id: UUID, assessment: EntropyAssessment, artifact_ref: Optional[str]) -> EntropyLedgerEntry:
         entry_id = uuid4()
-        created_at = datetime.now(UTC)
+        created_at = datetime.now(timezone.utc)
         hash_prev = self.hash_head
         hash_self = self._compute_hash(
             entry_id=entry_id,

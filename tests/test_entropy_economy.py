@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
@@ -97,7 +97,7 @@ def test_ledger_explorer_filters_by_time_and_bands_and_reports_continuity():
         assert high_res.status_code == 200
 
         entries = app.state.akashic_treasury.entries
-        now = datetime.now(UTC)
+        now = datetime.now(timezone.utc)
         entries[0].created_at = now - timedelta(minutes=30)
         entries[1].created_at = now - timedelta(minutes=10)
         entries[2].created_at = now

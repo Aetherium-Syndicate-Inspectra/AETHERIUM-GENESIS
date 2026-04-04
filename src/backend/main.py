@@ -158,12 +158,19 @@ async def _emit_deprecated_socket_warning(websocket: WebSocket, *, path: str) ->
     )
 
 
-async def _accept_compatibility_socket(websocket: WebSocket, *, path: str, add_client: bool = False) -> str:
+async def _accept_compatibility_socket(
+    websocket: WebSocket,
+    *,
+    path: str,
+    add_client: bool = False,
+    emit_notice: bool = True,
+) -> str:
     await websocket.accept()
     if add_client:
         clients.add(websocket)
     logger.warning("Deprecated websocket adapter in use: %s -> migrate clients to %s", path, CANONICAL_STREAM_PATH)
-    await _emit_deprecated_socket_warning(websocket, path=path)
+    if emit_notice:
+        await _emit_deprecated_socket_warning(websocket, path=path)
     return str(id(websocket))
 
 
@@ -381,7 +388,7 @@ async def websocket_endpoint(websocket: WebSocket):
     Maintained only as a compatibility adapter for legacy clients.
     Canonical ingress is /v1/session + /ws/v3/stream.
     """
-    session_id = await _accept_compatibility_socket(websocket, path="/ws", add_client=True)
+    session_id = await _accept_compatibility_socket(websocket, path="/ws", add_client=True, emit_notice=False)
     logger.info("Client connected")
 
     try:
@@ -471,6 +478,44 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 # Send back raw LogenesisResponse (PWA knows how to handle it)
                 await websocket.send_text(response.model_dump_json())
+
+            elif msg.get("mode") == "std":
+                inp = msg.get("input", {})
+                if inp.get("type") == "touch":
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "intent": "SPAWN",
+                                "shape": "organic",
+                                "region": inp.get("region"),
+                            }
+                        )
+                    )
+                elif inp.get("type") == "voice":
+                    await websocket.send_text(json.dumps({"intent": "MOVE", "vector": [0.0, 0.0]}))
+
+            elif msg.get("mode") == "ai":
+                inp = msg.get("input", {})
+                text = str(inp.get("text", "")).lower()
+                if "move" in text:
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "intent": "MOVE",
+                                "target": "TREE_CLUSTER_RIGHT",
+                                "vector": [-0.25, 0.0],
+                            }
+                        )
+                    )
+                elif "spawn" in text or "create" in text:
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "intent": "SPAWN",
+                                "color_profile": "natural_green",
+                            }
+                        )
+                    )
 
     except WebSocketDisconnect:
         clients.discard(websocket)
