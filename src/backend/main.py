@@ -494,8 +494,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 elif inp.get("type") == "voice":
                     await websocket.send_text(json.dumps({"intent": "MOVE", "vector": [0.0, 0.0]}))
 
-            elif msg.get("mode") == "ai":
-                inp = msg.get("input", {})
+            elif isinstance(msg, dict) and msg.get("mode") == "ai":
+                inp = msg.get("input") or {}
                 text = str(inp.get("text", "")).lower()
                 if "move" in text:
                     await websocket.send_text(
