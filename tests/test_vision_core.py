@@ -28,6 +28,8 @@ class TestVisionCore:
         # Skip strict tensor-shape assertions in that mode.
         if isinstance(output, Mock):
             pytest.skip("Vision core running under mocked torch backend")
+        if not isinstance(getattr(torch, "Tensor", None), type):
+            pytest.skip("Vision core running under non-standard mocked torch.Tensor")
 
         assert isinstance(output, AetherOutput)
         assert isinstance(output.light_field, torch.Tensor)

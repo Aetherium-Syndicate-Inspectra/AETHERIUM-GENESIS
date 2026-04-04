@@ -17,6 +17,17 @@ class ApprovalTicket:
     created_at: float = field(default_factory=time.time)
 
 
+    @property
+    def request_id(self) -> str:
+        """Backward-compatible alias used by legacy governance callers."""
+        return self.ticket_id
+
+    @property
+    def preview_data(self) -> Dict[str, Any]:
+        """Backward-compatible preview payload exposed to UIs/tests."""
+        return {"impact": self.impact, **self.evidence}
+
+
 class ApprovalRouter:
     def __init__(self) -> None:
         self._inbox: Dict[str, ApprovalTicket] = {}
