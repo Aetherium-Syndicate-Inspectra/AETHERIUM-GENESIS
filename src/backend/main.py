@@ -479,8 +479,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 # Send back raw LogenesisResponse (PWA knows how to handle it)
                 await websocket.send_text(response.model_dump_json())
 
-            elif msg.get("mode") == "std":
-                inp = msg.get("input", {})
+            elif isinstance(msg, dict) and msg.get("mode") == "std":
+                inp = msg.get("input") or {}
                 if inp.get("type") == "touch":
                     await websocket.send_text(
                         json.dumps(
