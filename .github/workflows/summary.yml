@@ -31,7 +31,7 @@ jobs:
             Body: ${{ github.event.issue.body }}
 
       - name: Comment with AI summary
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           ISSUE_SUMMARY: ${{ steps.inference.outputs.response }}
         with:
