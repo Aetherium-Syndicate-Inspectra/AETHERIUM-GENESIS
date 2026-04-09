@@ -91,10 +91,31 @@
         .architecture pre { margin: 0; white-space: pre; font-family: "SFMono-Regular", Consolas, monospace; color: #dce6ff; }
         .footer { padding: 16px 0 48px; color: var(--muted); }
         .footer-grid { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+        .endpoint-grid { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+        .endpoint-row {
+            display:flex; align-items:center; justify-content:space-between; gap: 12px;
+            margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(255,255,255,0.1);
+        }
+        .status-pill {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 6px 10px; border-radius: 999px; font-size: 0.72rem; letter-spacing: 0.08em;
+            text-transform: uppercase; border: 1px solid var(--line);
+        }
+        .status-pill::before {
+            content: ""; width: 8px; height: 8px; border-radius: 999px; background: var(--muted);
+            box-shadow: 0 0 0 3px rgba(255,255,255,0.04);
+        }
+        .status-ok { border-color: rgba(106,247,184,0.5); color: var(--green); }
+        .status-ok::before { background: var(--green); }
+        .status-warn { border-color: rgba(255,211,106,0.55); color: var(--amber); }
+        .status-warn::before { background: var(--amber); }
+        .status-fail { border-color: rgba(255,126,138,0.55); color: var(--danger); }
+        .status-fail::before { background: var(--danger); }
         @media (max-width: 1024px) {
             .hero-grid, .card-grid, .loop { grid-template-columns: 1fr 1fr; }
             .hero-grid { grid-template-columns: 1fr; }
             .loop { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .endpoint-grid { grid-template-columns: 1fr; }
         }
         @media (max-width: 720px) {
             .topbar-inner { align-items: flex-start; flex-direction: column; }
@@ -236,6 +257,29 @@
             </div>
         </section>
 
+        <section class="section" id="runtime-checks">
+            <h2>Runtime Connectivity Checks</h2>
+            <p class="section-copy">The homepage now verifies key endpoints so operators can confirm the platform is reachable from a single screen.</p>
+            <div class="endpoint-grid">
+                <article class="card">
+                    <span class="tag">Control APIs</span>
+                    <h3>Backend Reachability</h3>
+                    <p>Checks core APIs used by the control loop and governance workflow.</p>
+                    <div class="endpoint-row"><code>/docs</code><span class="status-pill" data-probe="/docs">checking</span></div>
+                    <div class="endpoint-row"><code>/governance/approvals</code><span class="status-pill" data-probe="/governance/approvals">checking</span></div>
+                    <div class="endpoint-row"><code>/v1/metrics/resonator-reliability</code><span class="status-pill" data-probe="/v1/metrics/resonator-reliability">checking</span></div>
+                </article>
+                <article class="card">
+                    <span class="tag">Manifestation</span>
+                    <h3>Frontend Surfaces</h3>
+                    <p>Checks dashboard and UI manifestation endpoints that operators use daily.</p>
+                    <div class="endpoint-row"><code>/dashboard</code><span class="status-pill" data-probe="/dashboard">checking</span></div>
+                    <div class="endpoint-row"><code>/overseer</code><span class="status-pill" data-probe="/overseer">checking</span></div>
+                    <div class="endpoint-row"><code>/sandbox/gunui/index.html</code><span class="status-pill" data-probe="/sandbox/gunui/index.html">checking</span></div>
+                </article>
+            </div>
+        </section>
+
         <section class="section">
             <h2>System Architecture Diagram</h2>
             <p class="section-copy">This lightweight diagram is aligned to the current repository structure and mirrors the same control/data flow described in the updated README.</p>
@@ -266,5 +310,29 @@ Ingress API / WebSocket ──► AetherEvent V3 Envelope ──► AetherBus-Ta
             <span>AETHERIUM-GENESIS • Governed AI-OS platform</span>
         </div>
     </footer>
+    <script>
+        const probes = document.querySelectorAll("[data-probe]");
+
+        async function runProbe(element) {
+            const endpoint = element.getAttribute("data-probe");
+            try {
+                const response = await fetch(endpoint, { method: "GET" });
+                element.classList.remove("status-fail", "status-warn", "status-ok");
+                if (response.ok) {
+                    element.classList.add("status-ok");
+                    element.textContent = "online";
+                    return;
+                }
+                element.classList.add("status-warn");
+                element.textContent = "degraded";
+            } catch (err) {
+                element.classList.remove("status-ok", "status-warn");
+                element.classList.add("status-fail");
+                element.textContent = "offline";
+            }
+        }
+
+        probes.forEach((probe) => runProbe(probe));
+    </script>
 </body>
 </html>
