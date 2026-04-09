@@ -2,45 +2,46 @@
 
 ## Supported Versions
 
-AETHERIUM-GENESIS is currently maintained on the default branch. Security fixes are prioritized for:
+Security fixes are prioritized for:
 
-- Latest commit on `main` (or current default branch)
-- Tagged releases published after `v2.3.0`
+- The current default branch (`main`)
+- The most recent tagged release
 
-Older snapshots, forks, and sandbox-only branches may not receive coordinated fixes.
+Older snapshots and personal forks may not receive coordinated fixes.
 
 ## Reporting a Vulnerability
 
-Please report vulnerabilities **privately** before public disclosure.
+Please report vulnerabilities privately before any public disclosure.
 
-1. Open a private security report via the "Security" tab on the GitHub repository.
-2. Include:
-   - Affected component/path
-   - Reproduction steps (PoC)
-   - Impact assessment (data exposure, execution risk, governance bypass risk)
-   - Suggested mitigation (if available)
-3. Do not publish exploit details until a fix or mitigation is available.
+1. Use the repository's GitHub **Security Advisory** workflow (preferred).
+2. If unavailable, open a private maintainer contact channel and include:
+   - Affected file(s)/component(s)
+   - Reproduction steps / PoC
+   - Impact assessment (confidentiality, integrity, availability)
+   - Suggested remediation (if known)
+
+Please do **not** post zero-day details in public issues.
 
 ## Response Targets
 
 - Initial acknowledgement: within **72 hours**
-- Triage decision: within **7 business days**
-- Mitigation plan or patch timeline: as soon as impact is confirmed
+- Triage outcome: within **7 business days**
+- Patch or mitigation timeline: provided after triage
 
-## Security Scope Priorities
+## Priority Areas
 
-Highest-priority issues include:
+Highest-priority findings include:
 
-- Governance bypass on high-impact execution paths
-- Memory/audit tampering (Akashic/ledger integrity)
-- AuthN/AuthZ flaws in control-plane APIs
+- Governance bypass for high-impact actions
+- AuthN/AuthZ flaws on control-plane APIs
+- Memory or ledger tampering (Akashic continuity/integrity)
 - Remote code execution in vessel adapters or execution pipeline
-- Correlation/provenance spoofing that breaks audit traceability
+- Provenance/correlation spoofing that breaks auditability
 
-## Coordinated Disclosure
+## Disclosure Process
 
-After fix deployment, maintainers may publish:
+After fixes are deployed, maintainers may publish:
 
-- Affected versions
+- Affected versions and scope
 - Technical root cause summary
-- Mitigation or upgrade guidance
+- Upgrade or mitigation guidance
