@@ -48,6 +48,8 @@ def validate_jwt_critical_headers(
     for ext in crit:
         if not isinstance(ext, str) or not ext.strip():
             raise InvalidCriticalHeaderError("crit entries must be non-empty strings")
+        if ext in RESERVED_HEADERS:
+            raise InvalidCriticalHeaderError(f"Standard header {ext} is not allowed in crit")
         if ext not in supported_extensions:
             raise InvalidCriticalHeaderError(f"Unsupported critical extension: {ext}")
         if ext not in headers:
