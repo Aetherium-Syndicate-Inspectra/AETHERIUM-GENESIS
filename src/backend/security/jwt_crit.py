@@ -17,7 +17,10 @@ class InvalidCriticalHeaderError(ValueError):
 
 
 RESERVED_HEADERS: frozenset[str] = frozenset(
-    {"alg", "jku", "jwk", "kid", "x5u", "x5c", "x5t", "x5t#S256", "typ", "cty", "crit"}
+    {
+        "alg", "jku", "jwk", "kid", "x5u", "x5c", "x5t", "x5t#S256", "typ", "cty", "crit",
+        "iss", "sub", "aud", "exp", "nbf", "iat", "jti",
+    }
 )
 
 
