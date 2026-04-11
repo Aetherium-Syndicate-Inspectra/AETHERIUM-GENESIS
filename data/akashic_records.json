@@ -1,1 +1,164 @@
-{"chain": []}
+{
+  "chain": [
+    {
+      "timestamp": 1775926316.6768248,
+      "provenance": {
+        "actor": "governance",
+        "intent_id": "cognitive_query",
+        "causal_link": "cognitive_query",
+        "correlation": {
+          "correlation_id": "corr-client-1",
+          "causation_id": "cognitive_query",
+          "trace_id": "trace-client-1"
+        }
+      },
+      "payload": {
+        "type": "governance_allowed",
+        "event_type": "governance_allowed",
+        "timestamp": 1775926316.676624,
+        "action": "cognitive_query",
+        "resource": "mind.lifecycle",
+        "decision_status": "ALLOWED",
+        "decision": {
+          "status": "ALLOWED",
+          "risk_tier": 0,
+          "reason": "No matching policy rule",
+          "action": "cognitive_query",
+          "resource": "mind.lifecycle",
+          "policy_effect": "ALLOW",
+          "policy_mode": "enforce",
+          "ticket_id": null,
+          "recommendation": null,
+          "ledger_event_type": "governance_allowed"
+        },
+        "policy": {
+          "effect": "ALLOW",
+          "metadata": {
+            "dry_run": false
+          },
+          "mode": "enforce"
+        },
+        "envelope": {
+          "envelope_id": "91112fc0-30e0-436b-a022-2d359aa38d7e",
+          "correlation": {
+            "correlation_id": "corr-client-1",
+            "causation_id": null,
+            "trace_id": "trace-client-1"
+          },
+          "session_id": "ae-a24ca8d2",
+          "origin": {
+            "service": "api",
+            "subsystem": "body",
+            "instance": null,
+            "channel": "ae-a24ca8d2"
+          },
+          "target": {
+            "service": "genesis_core",
+            "subsystem": "mind",
+            "instance": null,
+            "channel": "lifecycle"
+          },
+          "topic": "intent.ingress",
+          "action": "cognitive_query",
+          "resource": "mind.lifecycle",
+          "payload": {
+            "client_message": {
+              "text": "Hello Aether",
+              "correlation_id": "corr-client-1",
+              "trace_id": "trace-client-1"
+            },
+            "text": "Hello Aether",
+            "status": {
+              "phase": "intent_ingress",
+              "label": "RECEIVED"
+            },
+            "directive_state": {
+              "session_id": "ae-a24ca8d2",
+              "manifest_version": "2026.03-manifestation-v1",
+              "semantic_source": "backend",
+              "correlation_id": "corr-client-1",
+              "trace_id": "trace-client-1",
+              "causation_id": null,
+              "topic": "intent.ingress",
+              "directive_type": "intent_detected"
+            },
+            "action": "cognitive_query",
+            "resource": "mind.lifecycle",
+            "intent_type": "COGNITIVE_QUERY"
+          },
+          "environment": "development",
+          "governance": {
+            "decision": null,
+            "risk_tier": null,
+            "policy_effect": null,
+            "approval_ticket_id": null,
+            "policy_mode": "enforce",
+            "validated": true
+          },
+          "memory": {
+            "ledger_event_type": "intent_ingress",
+            "ledger_record_id": null,
+            "causal_chain": [
+              "corr-client-1"
+            ],
+            "replayable": true
+          }
+        }
+      },
+      "correlation": {
+        "correlation_id": "corr-client-1",
+        "causation_id": "cognitive_query",
+        "trace_id": "trace-client-1"
+      },
+      "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "hash": "610557a547407027a9c73bdbb2882433e969c2feaea50ffbe3f85bdbba20b349"
+    },
+    {
+      "timestamp": 1775926316.6811688,
+      "provenance": {
+        "actor": "runtime",
+        "intent_id": "corr-client-1",
+        "causal_link": "91112fc0-30e0-436b-a022-2d359aa38d7e",
+        "correlation": {
+          "correlation_id": "corr-client-1",
+          "causation_id": "91112fc0-30e0-436b-a022-2d359aa38d7e",
+          "trace_id": "trace-client-1"
+        }
+      },
+      "payload": {
+        "type": "runtime_outcome",
+        "event_type": "runtime_outcome",
+        "correlation_id": "corr-client-1",
+        "causation_id": "91112fc0-30e0-436b-a022-2d359aa38d7e",
+        "trace_id": "trace-client-1",
+        "action": "cognitive_query",
+        "resource": "mind.lifecycle",
+        "decision_status": "ALLOWED",
+        "outcome_status": "COMPLETED",
+        "detail": "Planner completed",
+        "error": null,
+        "actor": "runtime",
+        "origin": {
+          "service": "api",
+          "subsystem": "body",
+          "instance": null,
+          "channel": "ae-a24ca8d2"
+        },
+        "replayable": true,
+        "memory_stage": "committed",
+        "correlation": {
+          "correlation_id": "corr-client-1",
+          "causation_id": "91112fc0-30e0-436b-a022-2d359aa38d7e",
+          "trace_id": "trace-client-1"
+        }
+      },
+      "correlation": {
+        "correlation_id": "corr-client-1",
+        "causation_id": "91112fc0-30e0-436b-a022-2d359aa38d7e",
+        "trace_id": "trace-client-1"
+      },
+      "prev_hash": "610557a547407027a9c73bdbb2882433e969c2feaea50ffbe3f85bdbba20b349",
+      "hash": "4f9f2282b9f73de824dbd687aec54f11ceb2c356ee79498ca62021b3b5251d16"
+    }
+  ]
+}

@@ -16,6 +16,11 @@ class InvalidCriticalHeaderError(ValueError):
     """Raised when a JWT contains an invalid or unsupported ``crit`` header."""
 
 
+RESERVED_HEADERS: frozenset[str] = frozenset(
+    {"alg", "jku", "jwk", "kid", "x5u", "x5c", "x5t", "x5t#S256", "typ", "cty", "crit"}
+)
+
+
 SUPPORTED_CRITICAL_EXTENSIONS: frozenset[str] = frozenset({"b64"})
 
 
