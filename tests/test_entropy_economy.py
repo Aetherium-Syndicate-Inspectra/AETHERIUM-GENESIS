@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
@@ -97,7 +97,7 @@ def test_ledger_explorer_filters_by_time_and_bands_and_reports_continuity():
         assert high_res.status_code == 200
 
         entries = app.state.akashic_treasury.entries
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         entries[0].created_at = now - timedelta(minutes=30)
         entries[1].created_at = now - timedelta(minutes=10)
         entries[2].created_at = now
@@ -135,3 +135,42 @@ def test_ledger_explorer_rejects_invalid_time_range():
 
     assert response.status_code == 400
     assert response.json()["detail"] == "start_time must be <= end_time"
+
+
+def test_entropy_replay_returns_documents_timeline_and_explanation():
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/entropy/replay",
+            json={
+                "user_id": str(uuid4()),
+                "packet": _packet(0.02, preview="novel symbolic synthesis output"),
+            },
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["assessment"]["qou_score"] > 0.3
+    assert len(body["documents"]) == 4
+    assert len(body["timeline"]) == 5
+    assert body["explanation"]["quality_band"] in {"medium", "high"}
+    assert body["timeline"][0]["label"] == "Predict"
+
+
+def test_entropy_replay_rejects_invalid_packet_payload():
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/entropy/replay",
+            json={
+                "user_id": str(uuid4()),
+                "packet": {
+                    **_packet(0.3),
+                    "prediction_snapshot": {
+                        "model_version": "CSP-X1-Beta",
+                        "predicted_action": "click_notification",
+                        "confidence_score": 1.5,
+                    },
+                },
+            },
+        )
+
+    assert response.status_code == 422

@@ -4,21 +4,26 @@ on:
   issues:
     types: [opened]
 
+permissions:
+  issues: write
+  models: read
+  contents: read
+
+concurrency:
+  group: issue-summary-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
 jobs:
   summary:
     runs-on: ubuntu-latest
-    permissions:
-      issues: write
-      models: read
-      contents: read
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Run AI inference
         id: inference
-        uses: actions/ai-inference@v1
+        uses: actions/ai-inference@v2
         with:
           prompt: |
             Summarize the following GitHub issue in one paragraph:
@@ -26,9 +31,15 @@ jobs:
             Body: ${{ github.event.issue.body }}
 
       - name: Comment with AI summary
-        run: |
-          gh issue comment $ISSUE_NUMBER --body '${{ steps.inference.outputs.response }}'
+        uses: actions/github-script@v8
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-          RESPONSE: ${{ steps.inference.outputs.response }}
+          ISSUE_SUMMARY: ${{ steps.inference.outputs.response }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: process.env.ISSUE_SUMMARY
+            });

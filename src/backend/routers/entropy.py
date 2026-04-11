@@ -1,3 +1,4 @@
+import logging
 import hashlib
 from datetime import datetime
 from typing import Optional
@@ -8,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from src.backend.genesis_core.entropy.schemas import (
     EntropyLedgerExploreResponse,
     EntropyLedgerEntryView,
+    EntropyReplayResponse,
     EntropySubmitRequest,
     EntropySubmitResponse,
     HashChainContinuityReport,
@@ -16,6 +18,9 @@ from src.backend.genesis_core.entropy.schemas import (
 )
 
 router = APIRouter(prefix="/api/v1/entropy", tags=["entropy-economy"])
+
+
+logger = logging.getLogger("entropy.router")
 
 
 @router.post("/submit", response_model=EntropySubmitResponse)
@@ -110,4 +115,21 @@ async def explore_entropy_ledger(
             issues=[HashChainIssue(entry_id=issue["entry_id"], issue=issue["issue"]) for issue in issues],
         ),
         entries=entry_views,
+    )
+
+
+@router.post("/replay", response_model=EntropyReplayResponse)
+async def replay_entropy_packet(payload: EntropySubmitRequest, request: Request):
+    replay_studio = getattr(request.app.state, "entropy_replay_studio", None)
+    if replay_studio is None:
+        raise HTTPException(status_code=503, detail="Entropy replay subsystem is not initialized")
+
+    logger.info("entropy_replay_requested", extra={"packet_id": str(payload.packet.packet_id), "user_id": str(payload.user_id)})
+    assessment, documents, timeline, explanation = replay_studio.replay(payload.packet)
+
+    return EntropyReplayResponse(
+        assessment=assessment,
+        documents=documents,
+        timeline=timeline,
+        explanation=explanation,
     )

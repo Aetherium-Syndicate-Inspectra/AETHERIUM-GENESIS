@@ -112,3 +112,29 @@ class EntropyLedgerExploreResponse(BaseModel):
     hash_chain_head: str
     continuity: HashChainContinuityReport
     entries: List[EntropyLedgerEntryView]
+
+
+class ReplayDocument(BaseModel):
+    document_id: str
+    title: str
+    summary: str
+
+
+class ReplayTimelineEvent(BaseModel):
+    order: int = Field(ge=1)
+    label: str
+    detail: str
+
+
+class ReplayExplanation(BaseModel):
+    quality_band: QoUBand
+    verdict: str
+    drivers: List[str] = Field(default_factory=list)
+    risks: List[str] = Field(default_factory=list)
+
+
+class EntropyReplayResponse(BaseModel):
+    assessment: EntropyAssessment
+    documents: List[ReplayDocument] = Field(default_factory=list)
+    timeline: List[ReplayTimelineEvent] = Field(default_factory=list)
+    explanation: ReplayExplanation

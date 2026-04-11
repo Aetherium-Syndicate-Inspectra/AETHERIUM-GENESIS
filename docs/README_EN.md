@@ -1,86 +1,82 @@
 # AETHERIUM GENESIS (AG-OS)
-### Cognitive Infrastructure & Resonance Ecosystem (ASI Readiness)
+### Unified AI-OS Platform Overview
 
 ![Version](https://img.shields.io/badge/version-2.2.0--resonance-blueviolet.svg)
 ![Status](https://img.shields.io/badge/status-ACTIVE-success.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
-> **"This is not just AI, but a state of 'Resonators' (Intelligence Resonance)
-working together on a high-speed pathway of thought."**
+## Current state
 
----
+AETHERIUM-GENESIS is being aligned as a unified AI operating system with clear subsystem boundaries:
 
-## 📖 Current System Overview
+- **Mind**: intent interpretation and directive preparation.
+- **Kernel**: governance and approval through PRGX-AG-aligned policy enforcement.
+- **Bus**: AetherBus-Tachyon as the canonical event transport.
+- **Hands**: vessels/adapters that execute only governance-approved directives.
+- **Memory**: Akashic-style immutable continuity records.
+- **Body**: UI/PWA manifestation surfaces that render backend directives only.
 
-The system has been restructured for maximum agility and speed, with a clear separation of concerns:
+## Architecture summary
 
-*   **src/backend/**: The Core (Mind). Processes logic, ethics, and strategic decision-making.
-*   **src/frontend/**: The Body. A PWA interface using a Particle System to manifest "Intent" through light.
-*   **docs/**: Knowledge Base. Contains Manifestos, Blueprints, Business Plans, and Conceptual Anchors.
-*   **tests/**: Verification Suite. Ensures system integrity and state consistency.
+### Canonical control loop
 
----
+`Intent -> Reasoning -> Policy Validation -> Execution -> Memory Commit -> Manifestation`
 
-## 🧠 Core Concept: From AI Agents to "Resonators"
+### Unified AI-OS roles
 
-We have transitioned from traditional Agent systems to a **Resonance Architecture**:
-1.  **AetherBus Tachyon**: An intelligence resonance pathway reducing latency to microseconds.
-2.  **Primary Resonators**: 12 core resonator positions (Visionary, Technical, Governance, etc.).
-3.  **Negative Latency**: Predictive processing (Ghost Workers) that lets the AI think before the human acts.
+| Layer | Component | Responsibility |
+| --- | --- | --- |
+| System bus | AetherBus-Tachyon | ZeroMQ internal transport, WebSocket bridge, envelope propagation |
+| Governance kernel source | PRGX-AG | Policy evaluation, approval gates, risk-aware control |
+| Memory fabric | Akashic | Immutable records, replay continuity, audit joins |
+| Manifestation plane | UI / PWA | Render-only client for backend-authored directives |
 
----
+## Phase 1 focus
 
-## 🏛️ Deep Architecture
+- Tachyon is the preferred runtime bus.
+- V3 `AetherEvent` envelopes are the canonical cross-subsystem contract.
+- Correlation metadata must be preserved end-to-end.
+- Legacy bus implementations remain compatibility-only.
 
-The system coordinates through the **Sopan Protocol**:
-`Input (Human Intent) → LogenesisEngine (Formator) → AetherBus (Resonance) → ValidatorAgent (Audit) → AgioSage (Cognitive) → Output (Manifestation)`
+## Dependency installation
 
-### Key Technologies:
-- **FastAPI & WebSockets**: Real-time communication system (20Hz Heartbeat).
-- **HyperSonicBus**: High-speed data transfer via Shared Memory.
-- **Akashic Records**: Permanent memory via an Immutable Ledger (`data/akashic_records.json`).
-- **PWA (Progressive Web App)**: Mobile-first, installable interface for native-like experience.
-
----
-
-## 🚀 Running the System
-
-### 1. Environment Setup
 ```bash
-# Install dependencies
 pip install -r requirements.txt
-
-# Set PYTHONPATH
-export PYTHONPATH=$PYTHONPATH:.
 ```
 
-### 2. System Awakening
-Choose your execution mode:
+Optional ML / visual stack:
 
-**Developer / Web Mode (Recommended)**
 ```bash
-python awaken.py
+pip install -r requirements/optional-ml-visual.txt
 ```
-*Cleans shared memory and starts the backend with auto-reload.*
 
-**Core Mode (Production)**
+Development and test stack:
+
 ```bash
-python -m uvicorn src.backend.main:app --host 0.0.0.0 --port 8000
+pip install -r requirements/dev.txt
 ```
 
-Access Points:
-- **Product UI**: `http://localhost:8000`
-- **Developer Dashboard**: `http://localhost:8000/dashboard`
-- **API Docs**: `http://localhost:8000/docs`
+See [`docs/dependency_inventory.md`](dependency_inventory.md) for the full dependency classification.
 
----
+## Migration phases
 
-## 🗺️ Essential Documents
-*   [**🇬🇧 USAGE_EN.md**](../USAGE_EN.md) - Comprehensive User Guide.
-*   [**📐 TECHNICAL_BLUEPRINT_TH.md**](TECHNICAL_BLUEPRINT_TH.md) - Technical architecture details.
-*   [**📜 CONSTITUTION.md**](CONSTITUTION.md) - Core system principles.
+1. **Phase 1** — canonical Tachyon bus path and V3 envelope enforcement.
+2. **Phase 2** — PRGX-AG approval outcome bridge and stronger governance kernel integration.
+3. **Phase 3** — Akashic replay tooling and derived projection workers.
+4. **Phase 4** — cross-repo deployment profiles, rollback drills, and contract harnesses.
 
----
+## Proposed next functions / extensions
 
-© 2026 Aetherium Syndicate Inspectra (ASI)
-*“Where intelligences resonate, harmony emerges.”*
+- **Cross-Repo Contract Harness**: verify protocol, approval, and memory continuity across the three repositories.
+- **Governed Replay Console**: inspect one `correlation_id` lifecycle across bus, governance, execution, and memory.
+- **Deployment Profiles**: define shared local/staging/production runtime profiles.
+- **Directive Catalog**: formalize stable backend-authored manifestation directives.
+- **Projection Workers**: derive operator/search views from the canonical stream without mutating source-of-truth records.
+- **Approval Outcome Bridge**: emit PRGX-AG approval outcomes as standard V3 envelopes.
+
+## References
+
+- [`../README.md`](../README.md)
+- [`AETHERBUS_TACHYON_INTEGRATION.md`](AETHERBUS_TACHYON_INTEGRATION.md)
+- [`UNIFIED_AI_OS_INTEGRATION.md`](UNIFIED_AI_OS_INTEGRATION.md)
+- [`directive_envelope_standard.md`](directive_envelope_standard.md)

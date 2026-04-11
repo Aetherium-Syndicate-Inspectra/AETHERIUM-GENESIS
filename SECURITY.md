@@ -2,28 +2,46 @@
 
 ## Supported Versions
 
-| Version | Supported |
-| ------- | --------- |
-| main    | ✅        |
+Security fixes are prioritized for:
 
-## Security Notes
+- The current default branch (`main`)
+- The most recent tagged release
 
-### python-ecdsa Minerva timing side-channel
-
-The `python-ecdsa` project has a known timing side-channel issue (Minerva-style) affecting operations that rely on secret nonces/scalars (for example signing and ECDH on P-256). Signature verification is not affected.
-
-Because the upstream `python-ecdsa` project does not plan to harden this class of side-channel in scope, this repository avoids relying on `python-ecdsa` in runtime dependencies.
-
-Mitigation in this repository:
-- `python-jose` was removed from runtime dependencies to avoid pulling `python-ecdsa`.
-- JWT functionality should use `PyJWT[crypto]` (OpenSSL-backed `cryptography`) instead of pure-Python ECDSA stacks for production signing operations.
+Older snapshots and personal forks may not receive coordinated fixes.
 
 ## Reporting a Vulnerability
 
-Please open a private security report (or issue marked `security`) with:
-- impact summary,
-- reproducible steps,
-- affected files/modules,
-- and suggested remediation if available.
+Please report vulnerabilities privately before any public disclosure.
 
-We will acknowledge within 72 hours and provide a remediation plan or risk-acceptance rationale.
+1. Use the repository's GitHub **Security Advisory** workflow (preferred).
+2. If unavailable, open a private maintainer contact channel and include:
+   - Affected file(s)/component(s)
+   - Reproduction steps / PoC
+   - Impact assessment (confidentiality, integrity, availability)
+   - Suggested remediation (if known)
+
+Please do **not** post zero-day details in public issues.
+
+## Response Targets
+
+- Initial acknowledgement: within **72 hours**
+- Triage outcome: within **7 business days**
+- Patch or mitigation timeline: provided after triage
+
+## Priority Areas
+
+Highest-priority findings include:
+
+- Governance bypass for high-impact actions
+- AuthN/AuthZ flaws on control-plane APIs
+- Memory or ledger tampering (Akashic continuity/integrity)
+- Remote code execution in vessel adapters or execution pipeline
+- Provenance/correlation spoofing that breaks auditability
+
+## Disclosure Process
+
+After fixes are deployed, maintainers may publish:
+
+- Affected versions and scope
+- Technical root cause summary
+- Upgrade or mitigation guidance

@@ -1,116 +1,98 @@
-# Aetherium Genesis - Architectural Audit Report
+# AETHERIUM-GENESIS Architecture Audit (Canonical Alignment)
 
-**Date:** October 26, 2023
-**Auditor:** Jules (AI Software Engineer)
-**Scope:** Full Repository Audit (Backend, Frontend, Infrastructure)
+**Date:** 2026-03-15
+**Scope:** Repository audit against `AGENTS.md` and canonical design specifications.
 
----
+## Design Documents Followed
 
-## 1. Executive Summary
+1. `AGENTS.md` (canonical operating rules and subsystem laws).
+2. `README.md` (current runtime architecture and subsystem map).
+3. `ARCHITECTURE.md` (canonical data flow and memory source-of-truth).
+4. `docs/CANONICAL_TECHNICAL_SPEC.md` (explicit architecture boundaries, invariants, and drift notes).
+5. `docs/EXECUTION_MODEL.md` (execution lifecycle, atomicity, and failure-mode expectations).
 
-**Verdict:** **Concept / Early Prototype**
+## Constraints and Invariants Enforced During Audit
 
-The "Aetherium Genesis" system is currently a fractured collection of isolated components rather than a functioning software product. It exhibits a "Split Personality":
+- Preserve canonical loop: **Intent -> Reasoning -> Policy Validation -> Execution -> Memory Commit -> Manifestation**.
+- Treat frontend as **manifestation only** (no client-side cognition/policy authorship).
+- Verify governance can gate execution-capable paths.
+- Verify Akashic memory remains structural (append-only continuity + provenance), not debug-only.
+- Prefer explicit schemas/envelopes as subsystem boundaries.
+- Identify legacy surfaces that weaken canonical protocol boundaries.
 
-1.  **The Theatrical Shell (`main.py`, `visual_engine.py`):** A functional but purely cosmetic CLI simulation that opens a browser file. It mimics intelligence via `print` statements and has no connection to the actual AI logic.
-2.  **The Latent Core (`src/backend`, `src/ui`):** A sophisticated but dormant set of logic for generative image correction (Stable Diffusion + ControlNet). This code is **never executed** by the main application.
+## 1) Aligned Areas
 
-The system is **NOT production-ready**. It is a proof-of-concept where the interface and the brain are on two different islands with no bridge between them.
+### 1.1 Platform-first backend composition is present
+- `src/backend/main.py` composes routers, governance, entropy, bus, metrics, and startup lifecycle into one runtime host, consistent with AI-OS control-plane direction.
+- `src/backend/genesis_core/logenesis/engine.py` delegates distributed lifecycle orchestration through `LifecycleManager`, preserving backend-owned reasoning pathways.
 
----
+### 1.2 Protocol/schema-first surfaces exist and are actively used
+- `AetherEvent`/`AetherEventType` provide a typed transport envelope for bus propagation.
+- Intent contracts (`SystemIntent`, `IntentPayload`, `IntentContext`) are used in runtime request paths.
+- Governance API models (`ApprovalRequest`, decision payload models) and entropy schemas reinforce explicit contracts.
 
-## 2. Architecture Overview
+### 1.3 Governance + memory coupling is implemented at the kernel boundary
+- `ValidatorAgent` invokes `GovernanceCore` for `EXECUTION_REQUEST` tiering/approval routing.
+- `GovernanceCore` records approval and policy simulation outcomes to Akashic ledger via provenance-bearing events.
 
-### Current Architecture (Fractured)
+### 1.4 Akashic memory has first-class continuity mechanisms
+- `AkashicRecords` persists append-only chain blocks with `prev_hash`/`hash` linkage and provenance metadata.
+- Integrity utilities (`verify_hash_chain`, temporal consistency checks) exist and are callable.
+- Projection manager derives episodic/semantic/gem views from canonical ledger.
 
-```mermaid
-graph TD
-    User((User)) -->|Keys/Console| Main[main.py / visual_engine.py]
-    Main -->|File Open| Browser[Browser: gunui/living_interface.html]
+### 1.5 AetherBus exists as shared transport boundary
+- `AetherBusExtreme` centralizes publish/subscribe and global listener patterns.
+- `LifecycleManager` subscribes and routes intent-linked events through bus semantics, aligning with orchestration boundary goals.
 
-    subgraph "Dormant Core (Disconnected)"
-        Backend[src/backend/private/advanced_diffusion.py]
-        Schemas[src/backend/core/correction_schemas.py]
-        TS[src/ui/generative/correction_handler.ts]
-        Olorar[olorar_ai/core/kernel.py]
-    end
+## 2) Misaligned Areas
 
-    Main -.->|No Connection| Backend
-    Browser -.->|No Connection| Backend
-```
+### 2.1 Governance gate is bypassed in a canonical stream path
+- In `src/backend/routers/aetherium.py`, `/ws/v3/stream` sends user intent directly to `engine.lifecycle.agio_sage.process_query(...)` instead of traversing validator/governance gate.
+- This diverges from canonical sequencing where policy validation must precede execution-capable progression.
 
-### Main Architectural Principles
-*   **Session-Bound Correction:** Defined in `CorrectionEvent` schemas but not enforced in runtime (since runtime doesn't exist).
-*   **Deterministic Generative Logic:** `AdvancedDiffusion` enforces deterministic seeds/logic per request, which is a strong foundation for a "digital being" that doesn't hallucinate randomly.
-*   **Silent Governance:** The `olorar_ai` module attempts to implement a "Silent Steering" mechanism to bias results, but it is currently just a standalone Python script.
+### 2.2 Legacy `/ws` and `/ws/v2/stream` paths dilute protocol stability
+- `src/backend/main.py` maintains deprecated sockets with ad-hoc message types (`INTENT_RECOGNIZED`, `VISUAL_PARAMS`, `AI_SPEAK`) parallel to typed v3 event envelope usage.
+- Parallel protocol surfaces increase drift risk and weaken AetherBus as the sole orchestration boundary.
 
----
+### 2.3 Frontend still contains semantic/client-authored behavior in legacy interfaces
+- `src/frontend/index.html` performs local voice capture, local message-type branching, and direct intent packet authorship over legacy websocket messages.
+- `src/frontend/public/gunui/edge_gunui_connector.html` generates behavior from local/edge heuristic mood mapping (`system_mood`) independent of backend directive contracts.
+- These patterns violate manifestation-only direction and allow client-side semantic interpretation.
 
-## 3. Data Flow Analysis (Intended vs Actual)
+### 2.4 Execution vessel layer is structurally present but not strongly governance-bound end-to-end
+- Vessels define `preview/execute` contracts, but repository-wide runtime integration from governed approval -> vessel execution -> memory commit is not yet consistently wired as a single mandatory path.
+- This creates potential for future direct execution coupling if new call paths are added without governance wrappers.
 
-### The Intended "Awakening" Loop
-1.  **Input:** User performs a mouse gesture on the Canvas (`living_interface.html`).
-2.  **Capture:** `correction_handler.ts` captures the vector, batches "move" events, and creates a `CorrectionEvent`.
-3.  **Transport:** *[MISSING]* WebSocket/HTTP sends JSON to Python.
-4.  **Processing:** `AdvancedDiffusion.regenerate()` calculates the new pixel state using ControlNet Tile.
-5.  **Merge:** `RegionExtractor` blends the new patch into the frame.
-6.  **Render:** *[MISSING]* Updated image frame sent back to Canvas.
+### 2.5 Approval lifecycle handling has a control-flow inconsistency
+- `GovernanceCore.handle_approval` returns `False` on rejection after state mutation, while router currently interprets `False` as not-found and raises 404.
+- This can mask real governance decisions and degrade audit/operator trust semantics.
 
-### The Actual Loop
-1.  **Input:** User presses "Enter" 3 times in the CLI (`main.py`).
-2.  **Simulation:** `main.py` prints "System Awakened".
-3.  **Visual:** `webbrowser.open` launches `living_interface.html`.
-4.  **End:** User interacts with particles in the browser, but `console.log` is the only thing listening.
+## 3) Architectural Risks
 
----
+1. **Policy bypass risk in production stream path**: direct AgioSage invocation in v3 stream can normalize cognition/action responses without kernel checkpointing.
+2. **Protocol fragmentation risk**: maintaining multiple websocket dialects increases integration complexity and weakens deterministic envelope governance.
+3. **Frontend semantic drift risk**: legacy UI logic may become an implicit source of intent semantics if backend contracts are not made mandatory.
+4. **Execution governance gap risk**: vessel infrastructure may be consumed ad hoc without unified approval and ledger commitment pipeline.
+5. **Operator/audit ambiguity risk**: rejection-not-found conflation in approval decision route can reduce inspectability and incident replay quality.
 
-## 4. Risk Assessment
+## 4) Highest-Priority Corrections
 
-### Scalability & Performance
-*   **Critical Hardware Dependency:** `AdvancedDiffusion` initializes `ControlNetModel` and `StableDiffusionControlNetPipeline`. This requires ~6-8GB VRAM (CUDA). The current `main.py` has no checks for this, and the fallback to CPU would result in 10-30s latency per frame (unusable for "live" correction).
-*   **Startup Time:** Loading SD v1.5 takes 5-10 seconds. If `main.py` were connected, this cold start would break the "Ritual" immersion.
-*   **Network Payload:** Sending full Base64 images or even regional patches over standard HTTP for every gesture batch is a bottleneck. A binary WebSocket protocol is required.
+1. **Enforce validator/governance in `/ws/v3/stream` processing path** so all intent handling traverses canonical gate before downstream actions.
+2. **Define one canonical websocket protocol surface** (v3 envelope-first) and place legacy sockets behind explicit deprecation toggles or adapters.
+3. **Constrain frontend to rendering/backend directive consumption** by removing client-authored semantic branching from primary UI entrypoints.
+4. **Codify governed execution pipeline** (`approval status -> vessel action eligibility -> mandatory memory commit`) as reusable backend orchestration utility.
+5. **Fix approval decision response semantics** so rejected decisions remain successful governance outcomes (not 404 errors).
 
-### Correctness & Safety
-*   **Session Isolation:** The `CorrectionEvent` schema correctly omits user PII, relying on ephemeral `session_id`. This is a strong architectural decision for privacy.
-*   **Thread Safety:** `main.py` uses a simple `threading.Thread` for idle monitoring. If the backend is integrated, `StableDiffusion` pipelines are not inherently thread-safe for concurrent requests without a queue.
+## 5) Recommended Minimal Refactors
 
-### Test Coverage
-*   **Status:** Mixed.
-*   **Strengths:** `tests/test_advanced_diffusion.py` exists and uses mocks (`unittest.mock`), meaning the CI pipeline can run without a GPU.
-*   **Weaknesses:** There are no integration tests because there is no integration. No tests cover the frontend JS/TS logic.
+1. In `src/backend/routers/aetherium.py`, replace direct `agio_sage.process_query` invocation with lifecycle/validator-mediated intent processing that preserves governance checkpointing.
+2. In `src/backend/main.py`, retain deprecated sockets only as thin adapters translating legacy payloads into canonical `AetherEvent` envelopes; avoid duplicated logic paths.
+3. In `src/frontend/index.html`, reduce network semantic logic to rendering handlers for backend-owned directives/events (no client inference of policy/intent categories).
+4. In `src/frontend/public/gunui/edge_gunui_connector.html`, gate animation modes by backend-provided typed state packets instead of local heuristic mood synthesis.
+5. In `src/backend/genesis_core/governance/core.py` + `src/backend/routers/governance.py`, separate `not_found` from `decision_rejected` outcomes with explicit status payloads.
 
----
+## Assumptions (Necessary)
 
-## 5. Readiness Verdict
-
-**Level 2: Component Prototype**
-*   Individual components (Particle UI, Diffusion Class, Schema definitions) exist and likely work in isolation.
-*   The "System" as a whole does not exist yet.
-
----
-
-## 6. Recommendations
-
-### Immediate Actions (Next 3 Steps)
-
-1.  **Build the Bridge (Server):**
-    *   **Do this:** Create a lightweight FastAPI server in `src/backend/server.py`.
-    *   **Why:** You need a way for the JS frontend to talk to the Python backend.
-    *   **Endpoints:** `POST /session/start`, `WS /session/stream`.
-
-2.  **Consolidate Frontend:**
-    *   **Do this:** Integrate the logic from `src/ui/generative/correction_handler.ts` directly into `gunui/living_interface.html` (or set up a build step).
-    *   **Why:** currently `correction_handler.ts` is just a loose file. The browser cannot execute raw TypeScript.
-
-3.  **Fix Dependencies:**
-    *   **Do this:** Update `requirements.txt`.
-    *   **Add:** `torch`, `diffusers`, `transformers`, `accelerate`, `fastapi`, `uvicorn`, `python-multipart`.
-    *   **Why:** The code will crash immediately upon import without these.
-
-### What NOT to build yet
-*   **Mobile Support (Kivy/Buildozer):** The current architecture relies heavily on Web technologies (HTML/Canvas) and heavy Python ML libraries. Packaging this as an Android APK via Buildozer is extremely difficult (embedding PyTorch/CUDA on Android). Focus on a Web/Desktop architecture first.
-*   **Voice/Audio Integration:** `main.py` implies voice visualization. Ignore this until the core visual loop works.
-
-### Refactoring Needed
-*   **Deprecate `main.py` CLI:** The CLI "knock" ritual should be moved to the Frontend. The Python process should purely be a server (daemon), not an interactive CLI application.
+- Legacy endpoints are intentionally retained for compatibility, but are treated as technical debt per canonical docs.
+- Not every reasoning response currently triggers external side effects; nevertheless, governance-first invariant is evaluated on path structure, not only observed side effects.
+- This audit is static/repository-based and does not claim runtime behavioral proof beyond code-path analysis.

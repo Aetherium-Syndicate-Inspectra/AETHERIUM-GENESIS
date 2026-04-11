@@ -33,7 +33,7 @@ from src.backend.routers.aetherium import router as aetherium_router
 from src.backend.routers.metrics import router as metrics_router
 from src.backend.routers.metrics import MetricCollector
 from src.backend.routers.entropy import router as entropy_router
-from src.backend.genesis_core.bus.extreme import AetherBusExtreme
+from src.backend.routers.governance import router as governance_router
 from src.backend.security.key_manager import KeyManager
 from src.backend.genesis_core.entropy import AkashicTreasury, EntropyReplayStudio, EntropyValidator
 
@@ -43,11 +43,15 @@ from src.backend.departments.development.javana_core.responses import REFLEX_PAR
 # Auditorium Imports
 from src.backend.genesis_core.auditorium.service import AuditoriumService
 from src.backend.genesis_core.bus.factory import BusFactory
+from src.backend.governance.core import GovernanceCore
+from src.backend.governance.runtime import DirectiveRuntime
 import zlib
 from typing import Optional
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("AetherServer")
+
+CANONICAL_STREAM_PATH = "/ws/v3/stream"
 
 # --- Gatekeeper Middleware (Rate Limiting) ---
 class GatekeeperMiddleware(BaseHTTPMiddleware):
@@ -85,9 +89,11 @@ app.include_router(auth_router)
 app.include_router(aetherium_router)
 app.include_router(metrics_router)
 app.include_router(entropy_router)
+app.include_router(governance_router)
 
 # Global Services
 auditorium: Optional[AuditoriumService] = None
+background_tasks: list[asyncio.Task] = []
 
 # --- DEEPGRAM INTERFACE STUB ---
 class DeepgramTranscriber:
@@ -126,6 +132,48 @@ javana = JavanaKernel()
 
 clients = set()
 
+
+def _build_text_intent_packet(text: str) -> IntentPacket:
+    """Compatibility helper for deprecated websocket adapters."""
+    return IntentPacket(
+        modality="text",
+        embedding=None,
+        energy_level=0.5,
+        confidence=1.0,
+        raw_payload=text,
+    )
+
+
+async def _emit_deprecated_socket_warning(websocket: WebSocket, *, path: str) -> None:
+    """Make legacy websocket use visibly second-class without breaking compatibility."""
+    await websocket.send_text(
+        json.dumps(
+            {
+                "type": "DEPRECATION_NOTICE",
+                "path": path,
+                "canonical_path": CANONICAL_STREAM_PATH,
+                "detail": f"{path} is a compatibility adapter. Migrate to {CANONICAL_STREAM_PATH}.",
+            }
+        )
+    )
+
+
+async def _accept_compatibility_socket(
+    websocket: WebSocket,
+    *,
+    path: str,
+    add_client: bool = False,
+    emit_notice: bool = True,
+) -> str:
+    await websocket.accept()
+    if add_client:
+        clients.add(websocket)
+    logger.warning("Deprecated websocket adapter in use: %s -> migrate clients to %s", path, CANONICAL_STREAM_PATH)
+    if emit_notice:
+        await _emit_deprecated_socket_warning(websocket, path=path)
+    return str(id(websocket))
+
+
 @app.on_event("startup")
 async def startup_event():
     global auditorium
@@ -133,12 +181,13 @@ async def startup_event():
     # Awakening: Start the Bio-Digital Organism
     await engine.startup()
 
-    # Initialize AetherBusExtreme (V2 Protocol)
-    # We attach it to app.state for the API Router to use
-    aether_bus = AetherBusExtreme()
+    # Initialize canonical bus runtime selected by configuration/environment.
+    aether_bus = BusFactory.get_bus()
     await aether_bus.connect()
     app.state.aether_bus = aether_bus
     app.state.engine = engine # Expose engine to router
+    app.state.governance = GovernanceCore(ledger=engine.lifecycle.ledger)
+    app.state.directive_runtime = DirectiveRuntime(governance=app.state.governance, bus=aether_bus)
 
     # Initialize Security & Metrics
     app.state.key_manager = KeyManager()
@@ -153,19 +202,26 @@ async def startup_event():
     await aether_bus.add_global_listener(metric_collector.track_event)
 
     # Start Metrics Broadcast Loop
-    asyncio.create_task(metric_collector.broadcast_loop())
+    background_tasks.clear()
+    background_tasks.append(asyncio.create_task(metric_collector.broadcast_loop(), name="metric-broadcast-loop"))
 
     # Start Auditorium Service
     auditorium = AuditoriumService(engine)
     auditorium.start()
 
     # Start Health Broadcast Bridge
-    asyncio.create_task(health_broadcast_loop())
+    background_tasks.append(asyncio.create_task(health_broadcast_loop(aether_bus), name="health-broadcast-loop"))
 
 @app.on_event("shutdown")
 async def shutdown_event():
     # Enter Nirodha
     await engine.shutdown()
+
+    for task in list(background_tasks):
+        task.cancel()
+    if background_tasks:
+        await asyncio.gather(*background_tasks, return_exceptions=True)
+        background_tasks.clear()
 
     if hasattr(app.state, "aether_bus"):
         await app.state.aether_bus.close()
@@ -186,15 +242,8 @@ async def broadcast_to_clients(message: dict):
     for ws in disconnected:
         clients.discard(ws)
 
-async def health_broadcast_loop():
-    """Reads health reports from AetherBus and broadcasts to WebSockets."""
-    bus = BusFactory.get_bus()
-
-    # Ensure connected
-    try:
-        await bus.connect()
-    except Exception as e:
-        logger.warning(f"Health Broadcast: Connect Warning: {e}")
+async def health_broadcast_loop(bus):
+    """Reads health reports from the canonical AetherBus and broadcasts to WebSockets."""
 
     logger.info("Health Broadcast Loop Started")
 
@@ -227,18 +276,21 @@ async def health_broadcast_loop():
         logger.error(f"Health Broadcast Subscribe Error: {e}")
 
     # Keep alive loop
-    while True:
-        await asyncio.sleep(3600)
+    try:
+        while True:
+            await asyncio.sleep(3600)
+    except asyncio.CancelledError:
+        logger.info("Health Broadcast Loop Cancelled")
+        raise
 
 @app.websocket("/ws/v2/stream")
 async def websocket_v2_endpoint(websocket: WebSocket):
     """
     [DEPRECATED] WebSocket endpoint for V2 Streaming Protocol.
-    Please migrate to /v1/session + /ws/v3/stream (Aetherium Protocol).
+    Compatibility adapter only. Canonical ingress is /v1/session + /ws/v3/stream.
     """
-    await websocket.accept()
+    session_id = await _accept_compatibility_socket(websocket, path="/ws/v2/stream")
     logger.info("V2 Client connected")
-    session_id = str(id(websocket))
 
     try:
         while True:
@@ -293,13 +345,7 @@ async def websocket_v2_endpoint(websocket: WebSocket):
                     text = data.get("text", "")
                     logger.info(f"V2 Input: {text}")
 
-                    packet = IntentPacket(
-                        modality="text",
-                        embedding=None,
-                        energy_level=0.5,
-                        confidence=1.0,
-                        raw_payload=text
-                    )
+                    packet = _build_text_intent_packet(text)
                     response: LogenesisResponse = await engine.process(packet, session_id=session_id)
 
                     if response.visual_analysis:
@@ -339,14 +385,11 @@ async def websocket_v2_endpoint(websocket: WebSocket):
 async def websocket_endpoint(websocket: WebSocket):
     """
     [DEPRECATED] Legacy WebSocket endpoint.
-    Maintained for Actuator UI and Living Interface PWA compatibility.
+    Maintained only as a compatibility adapter for legacy clients.
+    Canonical ingress is /v1/session + /ws/v3/stream.
     """
-    await websocket.accept()
-    clients.add(websocket)
+    session_id = await _accept_compatibility_socket(websocket, path="/ws", add_client=True, emit_notice=False)
     logger.info("Client connected")
-
-    # Session ID for state persistence (simple IP-based or random)
-    session_id = str(id(websocket))
 
     try:
         while True:
@@ -390,13 +433,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     }))
                     # -----------------------------------------------
 
-                    packet = IntentPacket(
-                        modality="text",
-                        embedding=None,
-                        energy_level=0.5,
-                        confidence=1.0,
-                        raw_payload=text
-                    )
+                    packet = _build_text_intent_packet(text)
                     response: LogenesisResponse = await engine.process(packet, session_id=session_id)
 
                     # Convert LogenesisResponse to Client Protocol
@@ -436,17 +473,49 @@ async def websocket_endpoint(websocket: WebSocket):
                 inp = msg.get("input", {})
                 text = inp.get("text", "")
 
-                packet = IntentPacket(
-                    modality="text",
-                    embedding=None,
-                    energy_level=0.5,
-                    confidence=1.0,
-                    raw_payload=text
-                )
+                packet = _build_text_intent_packet(text)
                 response: LogenesisResponse = await engine.process(packet, session_id=session_id)
 
                 # Send back raw LogenesisResponse (PWA knows how to handle it)
                 await websocket.send_text(response.model_dump_json())
+
+            elif isinstance(msg, dict) and msg.get("mode") == "std":
+                inp = msg.get("input") or {}
+                if inp.get("type") == "touch":
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "intent": "SPAWN",
+                                "shape": "organic",
+                                "region": inp.get("region"),
+                            }
+                        )
+                    )
+                elif inp.get("type") == "voice":
+                    await websocket.send_text(json.dumps({"intent": "MOVE", "vector": [0.0, 0.0]}))
+
+            elif isinstance(msg, dict) and msg.get("mode") == "ai":
+                inp = msg.get("input") or {}
+                text = str(inp.get("text", "")).lower()
+                if "move" in text:
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "intent": "MOVE",
+                                "target": "TREE_CLUSTER_RIGHT",
+                                "vector": [-0.25, 0.0],
+                            }
+                        )
+                    )
+                elif "spawn" in text or "create" in text:
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "intent": "SPAWN",
+                                "color_profile": "natural_green",
+                            }
+                        )
+                    )
 
     except WebSocketDisconnect:
         clients.discard(websocket)
@@ -478,7 +547,10 @@ async def get_manifest():
     return FileResponse(os.path.join(BASE_DIR, "src/frontend/public/manifest.json"), media_type="application/json")
 
 # 2. Mount Subdirectories
+# /sandbox/gunui is the explicit experimental/non-authoritative route.
+# /gunui remains a compatibility alias and must not gain canonical semantics.
 app.mount("/gunui", StaticFiles(directory=os.path.join(BASE_DIR, "src/frontend/public/gunui"), html=True), name="gunui")
+app.mount("/sandbox/gunui", StaticFiles(directory=os.path.join(BASE_DIR, "src/frontend/public/gunui"), html=True), name="sandbox-gunui")
 app.mount("/icons", StaticFiles(directory=os.path.join(BASE_DIR, "src/frontend/public/icons")), name="icons")
 app.mount("/public", StaticFiles(directory=os.path.join(BASE_DIR, "src/frontend/public")), name="public")
 
@@ -515,3 +587,6 @@ async def overseer_gateway():
 # 3. Mount Root (The Living Interface)
 # NOTE: We mount src/frontend as root, so index.html is served at /
 app.mount("/", StaticFiles(directory=os.path.join(BASE_DIR, "src/frontend"), html=True), name="root")
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

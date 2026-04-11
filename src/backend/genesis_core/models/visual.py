@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, timezone
 
 # --- LEGACY / LOW LEVEL SCHEMAS (Still used by GunUI) ---
 
@@ -80,7 +80,7 @@ class EmbodimentContract(BaseModel):
     The Application Binary Interface (ABI) of Cognition.
     """
     contract_version: str = Field(default="1.0")
-    timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     temporal_state: TemporalState
     cognitive: CognitiveMetadata
     intent: IntentData
