@@ -24,7 +24,9 @@ This repository contains a FastAPI backend, governance/runtime services, Akashic
 │   │   └── auth/                    # Auth providers/routes/session manager
 │   └── frontend/                    # Homepage/dashboard/public UI surfaces
 ├── tests/                           # Unit, integration, frontend, and system tests
-└── README.md
+├── README.md
+├── SECURITY.md
+└── requirements.txt
 ```
 
 ## Quick start
