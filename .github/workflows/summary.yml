@@ -6,7 +6,6 @@ on:
 
 permissions:
   issues: write
-  models: read
   contents: read
 
 concurrency:
@@ -16,30 +15,38 @@ concurrency:
 jobs:
   summary:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Run AI inference
-        id: inference
-        uses: actions/ai-inference@v2
-        with:
-          prompt: |
-            Summarize the following GitHub issue in one paragraph:
-            Title: ${{ github.event.issue.title }}
-            Body: ${{ github.event.issue.body }}
-
-      - name: Comment with AI summary
+      - name: Post structured issue summary
         uses: actions/github-script@v9
-        env:
-          ISSUE_SUMMARY: ${{ steps.inference.outputs.response }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const issue = context.payload.issue;
+            const rawBody = issue.body || "(no description provided)";
+            const normalizedBody = rawBody
+              .replace(/\r\n/g, "\n")
+              .split("\n")
+              .map((line) => line.trim())
+              .filter(Boolean)
+              .slice(0, 6)
+              .join("\n- ");
+
+            const summary = [
+              "🤖 Automated triage summary",
+              "",
+              `- **Title:** ${issue.title}`,
+              `- **Author:** @${issue.user.login}`,
+              `- **URL:** ${issue.html_url}`,
+              `- **Key points:**\n- ${normalizedBody}`,
+              "",
+              "Please confirm labels/priority before implementation.",
+            ].join("\n");
+
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.payload.issue.number,
-              body: process.env.ISSUE_SUMMARY
+              issue_number: issue.number,
+              body: summary,
             });

@@ -6,13 +6,26 @@ Governed AI-OS platform that enforces a canonical control loop:
 
 This repository contains a FastAPI backend, governance/runtime services, Akashic memory, and HTML-based operator interfaces.
 
-## What is in this repo
+## Repository structure
 
-- **Backend runtime**: `src/backend/main.py` and routers for Aetherium, governance, entropy, and metrics.
-- **Governance core**: policy/risk/approval flow in `src/backend/governance/`.
-- **Execution + memory**: execution pipeline, vessels, and Akashic continuity in `src/backend/genesis_core/` and `src/backend/memory/`.
-- **Frontend surfaces**: homepage + dashboard + sandbox GunUI pages in `src/frontend/`.
-- **Regression tests**: end-to-end and unit coverage in `tests/`.
+```text
+.
+├── .github/workflows/               # CI, security, CodeQL, issue-triage automations
+├── docs/                            # Specs, audits, manuals, architecture references
+├── requirements/                    # Runtime/dev/optional dependency sets
+├── scripts/                         # Repository validation and benchmarking utilities
+├── src/
+│   ├── backend/
+│   │   ├── main.py                  # FastAPI app entrypoint
+│   │   ├── routers/                 # API routers (aetherium/governance/entropy/metrics)
+│   │   ├── governance/              # Runtime governance engine
+│   │   ├── genesis_core/            # Bus, models, memory, protocol, execution core
+│   │   ├── vessels/                 # External system adapters
+│   │   └── auth/                    # Auth providers/routes/session manager
+│   └── frontend/                    # Homepage/dashboard/public UI surfaces
+├── tests/                           # Unit, integration, frontend, and system tests
+└── README.md
+```
 
 ## Quick start
 
@@ -40,6 +53,21 @@ uvicorn src.backend.main:app --host 0.0.0.0 --port 8000 --reload
 - Public gateway page: `http://localhost:8000/public`
 - Overseer page: `http://localhost:8000/overseer`
 
+## Development workflow
+
+- Validate repository structure and markdown hygiene:
+
+  ```bash
+  python scripts/validate_repo_structure.py
+  ```
+
+- Run lint + tests locally:
+
+  ```bash
+  flake8 src tests scripts
+  pytest -q tests --ignore=tests/manual
+  ```
+
 ## Testing
 
 Run all tests:
@@ -53,6 +81,13 @@ Run a focused subset:
 ```bash
 pytest tests/test_frontend_homepage.py tests/test_integration_ui.py
 ```
+
+## CI/CD workflows
+
+- `lint_test.yml`: repository validation, flake8 linting, pytest, markdown lint.
+- `security.yml`: dependency review, `pip-audit`, `bandit`, TruffleHog scan.
+- `codeql.yml`: CodeQL analysis for Actions + Python.
+- `summary.yml`: auto-comment triage summary on newly opened issues.
 
 ## Architecture map
 
